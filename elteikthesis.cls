@@ -322,6 +322,8 @@
 % ------------------------------
 
 % ------------------------------
+% Jobb táblázathoz
+\RequirePackage{tabularx}
 % Multirow és multicolumn táblázathoz
 \RequirePackage{multirow}
 % Táblázatok tördelése több oldalra

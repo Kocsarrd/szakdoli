@@ -60,10 +60,109 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 		\item \textbf{Spreadsheet.Parser} -- felhasználó által írt kód reprezentációjának előállítása
 		\item \textbf{Spreadsheet.Types} -- a számolótábla és kapcsolódó kivételek típusdefiníciói
 	\end{itemize}
+\end{itemize} 
+
+\section{A program moduljainak részletes leírása}
+
+\subsection{Spreadsheet.Types}
+
+Az alkalmazás a Spreadsheet típussal reprezentálja a számolótábla állapotát. Alább látható a Spreadsheet.Types modulban szereplő definíció:
+
+\lstset{caption={A Spreadsheet típus}, label=src:hs2}
+\begin{lstlisting}[language={Haskell}]
+type CellID = Int
+
+data Cell' = Str String | Number Double | EmptyCell
+  deriving (Eq, Show, Generic)
+
+-- I need to come up with a better name lol
+data ForPiece = Code String | Refs [CellID]
+  deriving (Eq, Show, Generic)
+
+data FormulaError = FNoParse
+                  | FCycleRefError
+                  | FNoCache
+                  | FListTypeError
+                  | FMissingDepError
+                  | FGhciError
+                  | FTimeoutError
+  deriving (Eq, Show, Generic)
+
+data Formula = Formula { _code :: String
+                       , _cache :: Either FormulaError Cell'
+                       , _value :: Maybe [ForPiece]
+                       }
+  deriving (Eq, Show, Generic)
+
+data Cell = Val {_cellV :: Cell'} | For {_cellF :: Formula}
+  deriving (Eq, Show, Generic)
+
+data Spreadsheet = SS { _sheet :: Gr Cell Int
+                      , _selected :: Maybe CellID
+                      , _logMessage :: Maybe String
+                      }
+  deriving(Eq, Show, Generic)
+\end{lstlisting}
+
+A Spreadsheet egy rekord típus, amelynek három mezője van. A \textit{selected} mező jelenti az aktuálisan kijelölt cellát. Ez a mező kerülhetett volna a globális állapotba is, azonban a tervezés korai fázisában másképp döntöttem, és már nem feltétlenül éri meg refaktorálni a kódot. A \textit{\_logMessage} mező tartalmazza a legutóbbi művelet kiértékeléséből származó szöveges (a GUI-ban a logra írandó) üzenetet.
+
+A \textit{\_sheet} mező reprezentálja a tényleges számolótáblát. A számolótábla egy irányított gráf, aminek a csúcsai \textit{Cell} típusú értékekkel vannak címkézve. Az élek egész számokkal vannak címkézve. (Lehetett volna \textit{()}-tal is, azonban a használt gráfcsomag által biztosított legrövidebb utak implementációnak szüksége volt számszerű élcímkékre. Az implementációban minden él címkéje \textit{1}.) A gráfban minden csúcs a számolótábla egy cellájának felel meg. Egy \textit{A} csúcsból pontosan akkor megy él egy \textit{B} csúcsba, ha a \textit{B} csúcsban található cella kódja hivatkozik az \textit{A} csúcsban található cellára. 
+
+A fent megadott gráfreprezentációnak két előnye is van. Egyrészt könnyű körfigyelést implementálni, így elkerülve, hogy cellák körkörösen hivatkozzanak egymásra; másrészt ha módosul egy \textit{A} cella tartalma, akkor pontosan az \textit{A}-ból elérhető csúcsoknak megfelelő cellákat kell újra kiértékelni.
+
+A gráfreprezentáció megvalósításához az \textit{fgl} csomagot használtam. A műveletek a \textit{DynGraph} típusosztály tetszőleges megvalósítására működnek. \textbf{EZ MÉG NEM IGAZ, DE MAJD ÁTÍROM} A \textit{Spreadsheet} típus definíciójában a PatriciaTree alapú \textit{Gr} típust használtam.
+
+Egy cella tartalmát a \textit{Cell} típus fejezi ki. Egy cella tartalma lehet érték (\textit{Cell'}) vagy formula (\textit{Formula}). Az érték jelenleg háromféle lehet: szám (\textit{Double}), string vagy üres.
+
+Ha egy cella formulát tartalmaz, az a háromelemű \textit{Formula} rekorddal reprezentáltatik. A \textit{\_code} mező tartalmazza a felhasználó által megadott kódot. Ez egy kényelmi funkció, hogy a kód megjelenítéséhez ne kelljen visszakonvertálni a reprezentációból. A \textit{\_cache} mezőben szerepel, hogy mi a formula legutóbbi kiértékelésének eredménye (ha egyáltalán már ki lett értékelve). A cache értéke vagy egy érték (\textit{Cell'}) vagy valamilyen hiba (\textit{FormulaError}). A \textit{\_value} jelenti a formula kódgeneráláshoz szükséges reprezentációját. Ennek kiszámítása a \textit{Spreadsheet.Parser} modul feladata, így az (egyébként meglehetősen egyszerű) reprezentáció ismertetésére majd az említett modul leírásakor kerül sor.
+
+A \textit{Formula} típushoz tartozik egy invariáns állítás: a program futása során egy \textit{Formula} mindig a következő oldalon leírt állapotok valamelyikében figyelhető meg.
+
+\begin{table}
+	\centering
+	\begin{tabularx}{\textwidth}{ |l l l l| X |}
+		\hline
+		\multicolumn{4}{|c|}{Minta} & \multicolumn{1}{|c|}{Jelentés} \\
+		\hline\hline
+		Formula & \_ & (Left FNoParse) & Nothing & parseolási hiba \\
+		\hline
+		Formula & \_ & (Left FCycleRefError) & Nothing & sikeres parseolás, azonban a formula körkörös referenciákat adott volna a táblához \\
+		\hline
+		Formula & \_ & (Left FNoCache) & Just \_ & sikeres parseolás, érvényes referenciák, de a formula még nem lett kiértékelve \\
+		\hline
+		Formula & \_ & (Left FListTypeError) & Just \_ & \textbf{ALMA?} \\
+		\hline
+		Formula & \_ & (Left FMissingDepError) & Just \_ & a formula nem értékelhető ki, mivel egy hivatkozott cella nem volt cache-elve. \\
+		\hline
+		Formula & \_ & (Left FGHCIError) & Just \_ & a formula egyéb okokból nem volt kiértékelhető (pl. típushiba, Haskell szintaxishiba) \\
+		\hline
+		Formula & \_ & (Left FTimeoutError) & Just \_ & időtúllépés miatt sikertelen kiértékelés, valószínűleg végtelen ciklus miatt \\
+		\hline
+		Formula & \_ & (Right cell') & Just \_ & sikeres kiértékelés, az eredmény cell' \\
+		\hline 
+	\end{tabularx}
+	\caption[Egy \textit{Formula} lehetséges állapotai]{Egy \textit{Formula} lehetséges állapotai}
+	\label{tab:formula}
+\end{table}
+
+Érdemes megjegyezni, hogy ez az invariáns típuszinten is garantálható lett volna (feladat az olvasó számára!). A jelenlegi megoldás a korai tervezési fázis eredménye, a későbbiekben már erőforrásigényes lett volna refaktorálni a kódot.   
+\newpage
+További megjegyzések a \textit{Spreadsheet} típussal kapcsolatban:
+\begin{itemize}
+	\item A \textit{Spreadsheet.Types} modul alapértelmezett nevű lenseket is exportál a \textit{Cell, Formula} és \textit{Spreadsheet} típusokhoz.
+	\item A \textit{Spreadsheet.Types} modulban szereplő összes típus (a kivételek kivételével) példánya a \textit{Generic} és \textit{Serialize} típusosztályoknak (ez utóbbit a \textit{cereal} csomag exportálja). Erre a perzisztencia implementációjához van szükség.
 \end{itemize}
 
-\section{A program komponenseinek részletes leírása}
+\subsection{Spreadsheet.Parser}
 
-\subsection{A főprogram}
+A modul feladata egy a felhasználó által egy cellához megadott kód (\textit{String}) reprezentációjának (\textit{Cell}) előállítása. A modul egy függvényt exportál. (\textit{rep :: String -> Cell)}
 
-A főprogram a 
+Legyen a felhasználó által megadott kód \textit{str}. A \textit{rep} függvény az alábbi specifikáció szerint állítja elő a kód cellareprezentációját.
+
+\begin{itemize}
+	\item Ha str = "", rep str = \textit{Val EmptyCell}
+	\item Ha str illeszkedik a (+|-|$\varepsilon$)DD*(.|$\varepsilon$)D*) reguláris kifejezésre, ahol D=(0|1|2|3|4|5|6|7|8|9), akkor rep str = \textit{Val (Num n)}, ahol \textit{n} a literál által ábrázolt lebegőpontos szám. 
+	\item Ha a fenti esetek egyike sem áll fent, és str nem (=C*) alakú (ahol C az összes karakterek halmaza), akkor rep str = \textit{Val (Str str)}
+	\item Ha B a betűk halmaza (a \textit{Data.Char} modul \textit{isLetter} függvényének igazsághalmaza), C' = $C \backslash \{\S\}$ és str $(=((\S BD^*\S )|(\S  BD^*:BD^*\S )|(C'^*))^+)$ alakú, akkor a kód formulaként parseolható. (Részletesen alább lesz róla szó.)
+	\item Ha egyik fenti eset sem áll fent, akkor a parseolás sikertelen. Ekkor rep str = \textit{Formula str (Left FNoParse) Nothing}
+\end{itemize}
