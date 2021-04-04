@@ -25,6 +25,23 @@ A fentebb referált cikk által inspirálva a (GUI komponensein kívüli) globá
 Ezen bevezető után tekintsük a globális állapot definícióját! Az alábbi típusdefiníció az \textit{App.Types} modulban található:
 \lstset{caption={Az Env típus}, label=src:hs}
 \begin{lstlisting}[language={Haskell}]
+data EvalConfig = EvalConfig { modules :: [String]
+                             , paths :: [String]
+                             }
+  deriving (Eq, Generic)
+
+data EvalControl = EvalControl { eGhci    :: MVar Ghci
+                               , eCommand :: MVar String
+                               , eResult  :: MVar (Either String [String])
+                               , eConfig  :: MVar EvalConfig 
+                               } deriving Eq
+
+data SaveStatus = Saved | Modified
+  deriving Eq
+
+data File = File FilePath SaveStatus
+  deriving Eq
+  
 data Env = Env { evalControl  :: EvalControl
                , gui          :: Gui
                , state        :: IORef Spreadsheet
@@ -32,7 +49,13 @@ data Env = Env { evalControl  :: EvalControl
                } deriving Eq
 \end{lstlisting}
 
-Az \textit{evalControl} mező tartalmazza a kifejezések ghci-ban való kiértékelés hez szükséges erőforrásokat. A \textit{gui} mező tartalmazza a GUI komponenseit. A \textit{state} mező egy módosítható referencia, ami a számolótáblát reprezentáló, \textit{Spreadsheet} típusú adatot referálja. A file adattag tartalmazza az éppen a táblázatkezelőbe betöltött fájl fontosabb adatait, amennyiben be van töltve egy fájl. A mezők részletes leírása (típusdefinícióval együtt) szerepelni fog a komponenseket használó modulok részletes leírásában.
+Az \textit{evalControl} mező tartalmazza a kifejezések ghci-ban való kiértékelés hez szükséges erőforrásokat. Az \textit{eConfig} mező tartalmazza a GHCi-hoz tartozó konfigurációs beállításokat. (Betöltött modulok listája, és a modulok keresési útvonalainak listája.) Az \textit{eGhci} mező tartalmazza a háttérben futó GHCi példányra való hivatkozást. Az \textit{eCommand} és az \textit{eResult} valósítják meg a kommunikációt a kiértékelést végző szál és az alkalmazás fő szála között. Az \textit{eCommand}-nak a fő szál a termelője, és a kiértékelő szál a fogyasztója, az \textit{eResult}-nak pedig fordítva.
+
+A \textit{gui} mező tartalmazza a GUI komponenseit. A pontos típusdefiníció a GUI leírásánál fog szerepelni.
+
+A \textit{state} mező egy módosítható referencia, ami a számolótáblát reprezentáló, \textit{Spreadsheet} típusú adatot referálja. A file adattag tartalmazza az éppen a táblázatkezelőbe betöltött fájl fontosabb adatait, amennyiben be van töltve egy fájl. (Fájl neve, és állapota.)
+
+Az \textit{EvalConfig} típus példánya \textit{Generic} és \textit{Serialize} típusosztályoknak. Erre a perzisztenciához van szükség.
 
 \subsection{Programkomponensek és modulszerkezet (nem teljes!!!!!!!!!)}
 
@@ -62,7 +85,7 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 	\end{itemize}
 \end{itemize} 
 
-\section{A program moduljainak részletes leírása}
+\section{A program komponenseinek részletes leírása}
 
 \subsection{Spreadsheet.Types}
 
@@ -231,3 +254,64 @@ Ehhez szükség van a megadott \textit{String} \textit{Cell} reprezentációjár
 \subsubsection{cacheCell}
 
 \subsection{Spreadsheet.CodeGeneration}
+
+\subsection{Eval.EvalMain}
+
+A modul által exportált \textit{evalMain} függvény biztosítja a kifejezések GHCi-ben való kiértékelését végző szál főprogramját. A szál az alábbiak szerint működik:
+
+\begin{enumerate}
+	\item Várakozik, ameddig a globális állapot \textit{evalControl} mezőjének \textit{eCommand} változójába egy GHCi utasítást nem ír a fő szál.
+	\item Kiüríti a változót, és kiértékeli a kapott utasítást a GHCi-ben.
+	\item Ha egy megadott idő után nem ér véget a kiértékelés (jelenleg 1 másodperc), lekérdezi a GHCi folyamathoz tartozó PID-et, majd megkeresi annak a gyerekfolyamatát (\textit{childPid}), és az \textit{eResult} változóba \textit{Left\ childPid}-et ír. Ezt a folyamatot aztán a fő szál fogja kilőni.
+	\item Amennyiben időben véget ér a kiértékelés, a GHCi által eredményül adott sorok \textit{result} listáját \textit{Right\ result} módon az \textit{eResult} változóba írja.
+\end{enumerate}
+
+A timeout utáni viselkedés bonyolultsága egy szerencsétlen helyzet eredménye. A magyarázathoz meg kell ismerni a \textit{ghcid} csomag által biztosított GHCi interfészt. A \textit{startGhci} függvény a dokumentáció alapján elindít egy GHCi háttérfolyamatot, amellyel innentől egy megadott szálról kell interaktálni (a megszakítást kivéve). A valóságban azonban azt tapasztaltam, hogy két folyamatot indít el, amelyek közül az egyik gyereke a másiknak. 
+
+Időtúllépés esetén meg kell állítani a háttérben futó számítást. Erre szolgálna az \textit{interrupt} függvény, ami egy \textit{SIGINT} jelzést küld a GHCi folyamatnak. A GHCi folyamat azonban bizonyos esetekben ezt kimaszkolja, ilyenkor a számítást nem lehetséges megszakítani. \textbf{IDE KÉNE LINK ERRŐL A DISKURZUSRÓL} A GHCi leállítására szolgáló \textit{stopGhci} függvény pedig csak  az egyik (a szülő) folyamatot terminálja a \textit{startGhci} által indított két folyamatból. A másik folyamat pedig tovább folytatja a számítást. Az alkalmazás egy Haskell szálat tartalmazó verziójában ez kiéheztette az fő folyamatot. 
+
+Ezért van szükség arra, hogy a kiértékelés külön szálon fusson. Ugyanis időtúllépés esetén a fő szál, miután ütemezésre kerül, a kapott PID alapján a lehető legagresszívabban (\textit{SIGKILL}) terminálja a második GHCi folyamatot. Ez a tapasztalat szerint az első folyamatnak is véget vet. Ezután új GHCi folyamat indítható.
+
+A fenti megoldást a szükség szülte, és tapasztalatok alapján, gyakran próbálgatás útján állt össze. Nem ismert, hogy miért indít a \textit{startGhci} két folyamatot. (Egy "rendes" GHCi folyamathoz például csak egy PID tartozik.) A megoldás az én számítógépemen, Ubuntu 20.04 LTS operációs rendszer mellett működött, de nincs rá garancia, hogy más Linux rendszer (vagy akár egy másik számítógép!) esetén működni fog. (A működés feltétele, hogy ütemezésre kerüljön a fő szál.) Ráadásul csak e miatt az interakció miatt kellett konkurrenciát adni az alkalmazáshoz. Valódi hatékonyságot ezzel nem nyertünk, hiszen az egyik szál mindig blokkolt állapotban lesz. (Mivel mindkét szál a fogyasztóként hozzá tartozó \textit{MVar}-ra várakozik, ha éppen a másik szál dolgozik.)
+
+A gyerekfolyamat megtalálásához a program rendszerhívást hajt végre, a \textit{pgrep} parancsot használja \textit{-P} kapcsolóval.
+
+\subsection{Eval.Ghci}
+
+A modul fő feladata, hogy kiértékeljen egy GHCi parancsot, és az eredményt értelmezze. Emellett lehetőséget biztosít a modulok és keresési útvonalak újratöltésére a globális konfiguráció alapján (\textit{EvalConfig}).
+
+\begin{table}
+	\centering
+	\begin{tabularx}{\textwidth}{ |X|X|}
+		\hline
+		Függvény & Típus \\
+		\hline\hline
+		execGhciCommand & String -> ReaderT EvalControl IO (Either EvalError String) \\
+		\hline
+		loadModules & ReaderT EvalControl IO () \\
+		\hline
+	\end{tabularx}
+	\caption[Az \textit{Eval.Ghci} által exportált függvények]{Az \textit{Eval.Ghci} által exportált függvények}
+	\label{tab:interface}
+\end{table}
+
+A kiértékelés folyamata a (nem exportált) \textit{execG} függvényben van leírva, és az alábbi módon zajlik:
+\begin{enumerate}
+	\item A paraméterként kapott parancs a \textit{eCommand} változóba kerül.
+	\item Kiolvasásra kerül az eredmény az \textit{eResult} változóból.
+	\item Ha az eredmény \textit{Left\ pid}, a kapott PID-hez tartozó folyamat terminálásra kerül, és a kiértékelés eredménye \textit{Left\ ETimeoutError}. Új GHCi folyamat indul, és a hivatkozása bekerül a globális állapot \textit{evalConfig} mezőjének \textit{eGhci} mezőjébe.
+	\item Ha az eredmény \textit{Right\ result}, ez a kiértékelés eredménye. \textit{result :: [String]} a GHCi által eredményül adott sorok listája.
+\end{enumerate}
+
+Az exportált \textit{execGhciCommand} függvény ezt a viselkedést egészíti ki egy extra ellenőrzéssel.
+\begin{enumerate}
+	\item Ha az \textit{execG} eredménye \textit{Left\ ETimeoutError}, akkor ez az eredmény.
+	\item Ha az \textit{execG} eredménye \textit{Right\ results}:
+	\begin{itemize}
+		\item Ha \textit{results} üres, az eredmény \textit{Right\ ""}
+		\item Ha \textit{results} egyelemű, az eredmény \textit{Right\ (head (results))}
+		\item Ha \textit{results} több elemű, akkor a GHCi több sornyi eredményt adott vissza. Ezt a függvény hibának tekinti, és az eredmény \textit{Left (EGhciError results)}
+	\end{itemize}
+\end{enumerate}
+
+A \textit{loadModules} akció beállítja a globális állapot \textit{evalControl} mezőjének \textit{eConfig} mezője alapján az elérési utakat, majd betölti a megadott modulokat. A korábban betöltött modulokat először kitölti (\textit{:m}). Ilyenkor a felhasználó által közvetlenül a GHCi-ba megadott definíciók is elvesznek. Az akció betölti az \textit{Empty} modult is, ami szükséges ahhoz, hogy működjék az \textit{€} minta, amit a cellablokkok kezeléséhez biztosít a program.
