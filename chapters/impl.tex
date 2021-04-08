@@ -3,7 +3,13 @@
 
 \section{A fejlesztői dokumentáció felépítése}
 
-A fejlesztői dokumentáció három nagy részből áll. Az 3.2 részben ismertetésre kerülnek a szoftver készítése során felhasznált technológiák, valamint nagy vonalakban a szoftver logikai felépítése. (Milyen programkomponensek vannak, milyen feladatokat látnak el, hogyan kapcsolódnak egymáshoz.) A 3.3 rész tartalmazza az egyes komponensek részletesebb leírását. Minden komponens esetén ismertetésre kerül a más komponensek felé nyilvánosságra hozott interfész, valamint a komponensek működési elve, beleértve a használt típusok leírását és a fontosabb algoritmusok működési elvét. A 3.4 rész tartalmazza a tesztelési eljárás leírását és a tesztelés eredményeit. 
+A fejlesztői dokumentáció három nagy részből áll. 
+
+A 3.2 részben ismertetésre kerülnek a szoftver készítése során felhasznált technológiák, valamint nagy vonalakban a szoftver logikai felépítése. (Milyen programkomponensek vannak, milyen feladatokat látnak el, hogyan kapcsolódnak egymáshoz.) 
+
+A 3.3 rész tartalmazza az egyes komponensek részletesebb leírását. Minden komponens esetén ismertetésre kerül a más komponensek felé nyilvánosságra hozott interfész, valamint a komponensek működési elve, beleértve a használt típusok leírását és a fontosabb algoritmusok működési elvét. A rész sorrendileg úgy van felépítve, hogy először szerepelnek a vezérlő komponens (\textit{App}) által használt komponensek leírásai, majd ezt követően a fő komponens. Így "lentről fölfelé" haladva először meg lehet érteni az egyes kisebb részek működését, majd azok segítségével az egész alkalmazás működését.
+
+A 3.4 rész tartalmazza a tesztelési eljárás leírását és a tesztelés eredményeit. 
 
 \section{A szoftver felépítése}
 
@@ -57,6 +63,38 @@ A \textit{state} mező egy módosítható referencia, ami a számolótáblát re
 
 Az \textit{EvalConfig} típus példánya \textit{Generic} és \textit{Serialize} típusosztályoknak. Erre a perzisztenciához van szükség.
 
+\subsection{A GUI}
+
+Az alábbi kódrészlet a GUI definíciója az \textit{App.Types} modulból:
+
+\lstset{caption={A Gui típus}, label=src:hs}
+\begin{lstlisting}[language={Haskell}]
+data Menubar = Menubar { newButton :: Button
+                       , saveButton :: Button
+                       , loadButton :: Button
+                       , modulesButton :: Button
+                       , pathsButton :: Button
+                       } deriving Eq
+
+data Gui = Gui { mainWindow  :: Window
+               , logWindow   :: ScrolledWindow
+               , log         :: TextBuffer
+               , table       :: Table
+               , entryKeys   :: [(Entry,(Int,Int))]
+               , editor      :: Entry
+               , commandLine :: Entry
+               , menu        :: Menubar
+               } deriving Eq
+\end{lstlisting}
+
+A \textit{Gui} típus tartalmazza a Gui azon komponenseit, amelyekre szükség van a handlerek hozzáadásához. A \textit{mainWindow} komponens tartalmazza az alkalmazás főablakát. 
+
+A számolótábla megjelenítése egy \textit{Table} segítségével történik. A cellákat a \textit{Table}-ben elhelyezett \textit{Entry}-k reprezentálják. Minden \textit{Entry}-hez egy \textit{(Int,Int)} kulcs is eltároltatik. Ez mutatja, hogy a tábla melyik pozíciójához tartozik az adott \textit{Entry}. Ez egy objektumorientált nyelvben megoldható lenne egy leszármazott widgettel (amelynek van egy extra mezője), azonban a \textit{gtk2hs} keretein belül ezt körülményes lett volna megoldani, így inkább ezt a megoldást választottam. Az \textit{Entry}-kulcs párokat az \textit{entryKeys} mező tartalmazza.
+
+A grafikus felület alján található log egy \textit{ScrolledWindow}-ban elhelyezkedő \textit{TextView}. Magára a \textit{TextView}-ra nincs szükség, csak az általa használt \textit{TextBuffer}-re, ezért azt nem is tartalmazza a \textit{Gui}. Az editor és a parancssor egy-egy \textit{Entry}-vel vannak implementálva. A \textit{menu} komponens tartalmazza felső menüsoron elérhető gombokat. 
+
+A GUI layout ennél alaposabb dokumentációja az \textit{App.CreateEnv} modul leírásában érhető el. 
+
 \subsection{Programkomponensek és modulszerkezet (nem teljes!!!!!!!!!)}
 
 Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
@@ -67,7 +105,14 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 	\begin{itemize}
 		\item \textbf{App.CreateEnv} -- a globális állapot inicializálása, GUI funkcionalitás nélkül
 		\item \textbf{App.RunApp} -- a főprogram definiálása, a main loop terminálásakor végrehajtandó IO akciók megadása
-		\item \textbf{App.Setup}	-- funkcionalitás hozzárendelése a GUI-hoz
+		\item \textbf{App.Setup}	-- funkcionalitás hozzárendelése a GUI komponenseihez
+		\begin{itemize}
+			\item \textbf{App.Setup.CommandLine} -- a parancssor eseményeinek kezelése
+			\item \textbf{App.Setup.Editor} -- a kódszerkesztő eseményeinek kezelése
+			\item \textbf{App.Setup.Global} -- több GUI komponens által is használt akciók
+			\item \textbf{App.Setup.Menubar} -- menüsor gombjaihoz tartozó események kezelése
+			\item \textbf{App.Setup.Table} -- a számolótáblát megjelenítő táblázat eseményeinek kezelése
+		\end{itemize}
 		\item \textbf{App.Types} -- a globális állapothoz tartozó típusdefiníciók
 	\end{itemize}
 	\item \textbf{Eval} -- kifejezések GHCi-ban történő kiértékelése
@@ -186,25 +231,25 @@ A modul feladata egy a felhasználó által egy cellához megadott kód (\textit
 
 Legyen a felhasználó által megadott kód \textit{str}. A \textit{rep} függvény az alábbi specifikáció szerint állítja elő a kód cellareprezentációját.
 
-\begin{enumerate}
+\begin{compactenum}
 	\item Ha str = "", rep str = \textit{Val EmptyCell}
 	\item Ha str illeszkedik a $(+|-|\varepsilon)DD^*(.D^+|\varepsilon))$ reguláris kifejezésre, ahol D=(0|1|2|3|4|5|6|7|8|9), akkor rep str = \textit{Val (Num n)}, ahol \textit{n} a literál által ábrázolt lebegőpontos szám. 
 	\item Ha a fenti esetek egyike sem áll fent, és str nem (=C*) alakú (ahol C az összes karakterek halmaza), akkor rep str = \textit{Val (Str str)}
 	\item Ha B a betűk halmaza (a \textit{Data.Char} modul \textit{isLetter} függvényének igazsághalmaza), C' = $C \backslash \{\S\}$ és str $(=((\S  BD^+:BD^+\S )|(\S BD^+\S )|(C'^+))^+)$ alakú, akkor a kód formulaként parseolható. rep str = \textit{Formula str (Left FNoCache) (Just ps)}, ahol ps definíciója alább szerepel.
 	\item Ha egyik fenti eset sem áll fent, akkor a parseolás sikertelen. Ekkor rep str = \textit{Formula str (Left FNoParse) Nothing}
-\end{enumerate}
+\end{compactenum}
 
 Ha \textit{str} formulaként parseolható (fenti 4. eset), egy egyszerű szintaktikus elemzés segítségével kaphatjuk a reprezentációjának \textit{\_value} komponensét. A parser először elhagyja az \textit{=} karaktert. Ezután sorban parseol substringeket a szó elejéről az alábbi módon:
-\begin{enumerate}
+\begin{compactenum}
 	\item Először megpróbálja cellahivatkozásként olvasni a soron következő részt: $((\S  BD^*:BD^*\S )|(\S BD^+\S ))$. Ha sikerült, a hivatkozást cellaazonosítók sorozatává konvertálja (lásd alább), és a kapott \textit{rs} azonosítólistát $Refs\ rs$ módon az eredménylista végére fűzi.
 	\item Ha a soron következő substring nem olvasható cellahivatkozásként, akkor a parser végigolvassa a lehető leghosszabb $s = C'^+$ substringet, és az eredménylistához egy $Code\ s$-t ír.
-\end{enumerate}
+\end{compactenum}
 
 A cellahivatkozások feloldásához kihasználjuk, hogy a karakterek injektíven az egész számok halmazára képezhetők (az \textit{Enum} típusosztály műveleteivel). A kis- és nagybetűket nem különbözetjük meg. Emellett definiálunk egy \textit{Enum} példányt \textit{(Int,Int)} párokra. \textbf{AZT IS LE KÉNE SZÉPEN ÍRNI...} Jelölje $fromEnum^C$ a karaktert Int-té kódoló függvényt, és $fromEnum^P$ az \textit{(Int,Int)} párt Int-té kódoló függvény. Jelölje $a,b :: Int$ esetén $[a..b]$ az $a \le n \le b$ n egész számok rendezett listáját! Ekkor a cellahivatkozások feloldása az alábbiak szerint történik:
-\begin{enumerate}
+\begin{compactenum}
 	\item Ha a hivatkozás $(\S BD^*\S )$ alakú, legyen \textit{b} a betű, és \textit{n} a számjegyek által reprezentált egész szám. Ekkor a kapott  \textit{rs} lista egyelemű. $rs\ = [fromEnum^P\ (fromEnum^C,n)]$
 	\item Ha a hivatkozás $(\S  BD^*:BD^*\S )$ alakú, felbontható a \textit{:} mentén két egyszerű hivatkozásra. Legyenek a betűk $d_1$ és $d_2$, a számjegyek által reprezentált számok pedig rendre $n_1$ és $n_2$! Ekkor XD LOL 
-\end{enumerate}
+\end{compactenum}
 
 \subsection{Spreadsheet.Interface}
 
@@ -243,11 +288,11 @@ A \textit{setCellState} függvény feladata, hogy a megadott cellaazonosítóhoz
 
 Ehhez szükség van a megadott \textit{String} \textit{Cell} reprezentációjára, amit a \textit{Spreadsheet.Parser} modul által exportált \textit{rep} függvény számít ki. A kapott reprezentáció alapján az alább leírtaknak megfelelően viselkedik a függvény:
 
-\begin{enumerate}
+\begin{compactenum}
 	\item Ellenőrzi, hogy a cella állapotának megváltoztatásával keletkeznék-e 		körkörös referencia. Pontosan akkor keletkeznék, ha a megváltoztatandó $c$ 	azonosítójú cellához tartozó csúcsba bemenő összes él kitörlésével keletkezett gráfban van olyan $n$ azonosítójú csúcs, hogy $c$ kódja hivatkozik $n$-re és a gráfban már van $c \rightarrow n$ út. (Ez utóbbi feltétel azt jelenti, hogy az $n$ cella értéke függ $c$ értékétől.) Ezt a feltételt az \textit{isLegal} függvény ellenőrzi. Érdemes megjegyezni, hogy ilyen hiba csak akkor fordulhat elő, ha a kapott reprezentációnk egy formula.
 	\item Amennyiben az \textit{isLegal} eredménye \textit{False}, a $c$ csúcsban levő cella reprezentációja \textit{For (Formula str' (Left FCycleRefError) Nothing)} lesz, ahol \textit{str'} a paraméterként kapott \textit{String}. A \textit{\_logMessage} mezőbe egy hibaüzenet kerül.
 	\item Amennyiben az \textit{isLegal} függvény \textit{True} eredményt ad, a gráfból kitöröltetik az összes $c$-be menő él, és új $c$-be menő élek kerülnek behúzásra a $c$ kódja által referált celláknak megfelelő csúcsokból. (Ezeket a \textit{references} függvény számolja a reprezentációból.) A \textit{\_logMessage} mező tartalma egy sikert jelző üzenet lesz.
-\end{enumerate}
+\end{compactenum}
 
 \textbf{ITT MÉG KÉNE ÍRNI TALÁN A FELHASZNÁLT SEGÉDFÜGGVÉNYEKRŐL?}
 
@@ -255,16 +300,18 @@ Ehhez szükség van a megadott \textit{String} \textit{Cell} reprezentációjár
 
 \subsection{Spreadsheet.CodeGeneration}
 
+
+
 \subsection{Eval.EvalMain}
 
 A modul által exportált \textit{evalMain} függvény biztosítja a kifejezések GHCi-ben való kiértékelését végző szál főprogramját. A szál az alábbiak szerint működik:
 
-\begin{enumerate}
+\begin{compactenum}
 	\item Várakozik, ameddig a globális állapot \textit{evalControl} mezőjének \textit{eCommand} változójába egy GHCi utasítást nem ír a fő szál.
 	\item Kiüríti a változót, és kiértékeli a kapott utasítást a GHCi-ben.
 	\item Ha egy megadott idő után nem ér véget a kiértékelés (jelenleg 1 másodperc), lekérdezi a GHCi folyamathoz tartozó PID-et, majd megkeresi annak a gyerekfolyamatát (\textit{childPid}), és az \textit{eResult} változóba \textit{Left\ childPid}-et ír. Ezt a folyamatot aztán a fő szál fogja kilőni.
 	\item Amennyiben időben véget ér a kiértékelés, a GHCi által eredményül adott sorok \textit{result} listáját \textit{Right\ result} módon az \textit{eResult} változóba írja.
-\end{enumerate}
+\end{compactenum}
 
 A timeout utáni viselkedés bonyolultsága egy szerencsétlen helyzet eredménye. A magyarázathoz meg kell ismerni a \textit{ghcid} csomag által biztosított GHCi interfészt. A \textit{startGhci} függvény a dokumentáció alapján elindít egy GHCi háttérfolyamatot, amellyel innentől egy megadott szálról kell interaktálni (a megszakítást kivéve). A valóságban azonban azt tapasztaltam, hogy két folyamatot indít el, amelyek közül az egyik gyereke a másiknak. 
 
@@ -296,15 +343,15 @@ A modul fő feladata, hogy kiértékeljen egy GHCi parancsot, és az eredményt 
 \end{table}
 
 A kiértékelés folyamata a (nem exportált) \textit{execG} függvényben van leírva, és az alábbi módon zajlik:
-\begin{enumerate}
+\begin{compactenum}
 	\item A paraméterként kapott parancs a \textit{eCommand} változóba kerül.
 	\item Kiolvasásra kerül az eredmény az \textit{eResult} változóból.
 	\item Ha az eredmény \textit{Left\ pid}, a kapott PID-hez tartozó folyamat terminálásra kerül, és a kiértékelés eredménye \textit{Left\ ETimeoutError}. Új GHCi folyamat indul, és a hivatkozása bekerül a globális állapot \textit{evalConfig} mezőjének \textit{eGhci} mezőjébe.
 	\item Ha az eredmény \textit{Right\ result}, ez a kiértékelés eredménye. \textit{result :: [String]} a GHCi által eredményül adott sorok listája.
-\end{enumerate}
+\end{compactenum}
 
 Az exportált \textit{execGhciCommand} függvény ezt a viselkedést egészíti ki egy extra ellenőrzéssel.
-\begin{enumerate}
+\begin{compactenum}
 	\item Ha az \textit{execG} eredménye \textit{Left\ ETimeoutError}, akkor ez az eredmény.
 	\item Ha az \textit{execG} eredménye \textit{Right\ results}:
 	\begin{itemize}
@@ -312,6 +359,161 @@ Az exportált \textit{execGhciCommand} függvény ezt a viselkedést egészíti 
 		\item Ha \textit{results} egyelemű, az eredmény \textit{Right\ (head (results))}
 		\item Ha \textit{results} több elemű, akkor a GHCi több sornyi eredményt adott vissza. Ezt a függvény hibának tekinti, és az eredmény \textit{Left (EGhciError results)}
 	\end{itemize}
-\end{enumerate}
+\end{compactenum}
 
 A \textit{loadModules} akció beállítja a globális állapot \textit{evalControl} mezőjének \textit{eConfig} mezője alapján az elérési utakat, majd betölti a megadott modulokat. A korábban betöltött modulokat először kitölti (\textit{:m}). Ilyenkor a felhasználó által közvetlenül a GHCi-ba megadott definíciók is elvesznek. Az akció betölti az \textit{Empty} modult is, ami szükséges ahhoz, hogy működjék az \textit{€} minta, amit a cellablokkok kezeléséhez biztosít a program.
+
+\subsection{Persistence}
+
+A modul feladata, hogy fájlokat mentsen és betöltsön. Egy adatot akkor lehet elmenteni, ha az adat típusa példánya a \textit{Serialize} típusosztálynak. Ezt a típusosztályt a \textit{cereal} csomag biztosítja. Egy \textit{Serialize} példány minden eleme bytestring-gé szerializálható. A program a számolótáblák és a konfigurációs fájlok perzisztálásához is bytestring formátumot használ.
+
+Jelenleg a program egy konfigurációs fájlt használ, ennek nevét a \textit{moduleConfigFile} konstans definiálja. Az alkalmazás bezárásakor ebbe a fájlba kerül mentésre a globális állapot \textit{evalControl} mezőjének \textit{eConfig} mezője.
+
+\subsubsection{saveSheet :: Serialize a => String -> a -> IO ()}
+
+Ez a függvény elment egy szerializálható adatot a megadott fájlnévvel. Létező fájl esetén felülírás történik. 
+
+\subsubsection{loadSheet :: Serialize a => String -> IO (Either String a)}
+
+Betölti a paraméterként kapott fájlból az adatot. Ha nem létezik a fájl, az eredmény egy hibaüzenet, ami jelzi, hogy a paraméterként kapott fájl nem létezik.
+
+\subsubsection{saveModuleConfig :: EvalConfig -> IO ()}
+
+A \textit{saveSheet} speciális esete. A kapott paramétert a \textit{moduleConfigFile} konstans által megadott fájlba menti.
+
+\subsubsection{loadModuleConfig :: IO EvalConfig}
+
+Betölti a modulkonfigurációs fájl tartalmát. Ha a fájl nem létezik, az IO akció üres konfigurációt eredményez: (\textit{EvalConfig [] []}).
+
+\subsection{App.RunApp}
+
+Ez a modul definiálja a főprogramot (\textit{appMain :: IO () )}, amellyel egyenlő a \textit{Main}-ben definiált \textit{main} függvény. Az \textit{appMain} két akcióból áll. Először inicializálja a globális állapotot (\textit{App.CreateEnv.createEnv}), majd végrehajtja a \mbox{\textit{runApp :: ReaderT Env IO ()}} akciót, a globális állapotot az inicializált környezetre állítva. A 
+\textit{createEnv} akció elindítja a háttérben futó kiértekelő szálat is. (\textit{Eval.EvalMain.evalMain}).
+
+A \textit{runApp} akció a következőképpen határozza meg a program működését:
+\begin{compactenum}
+	\item Hozzárendeli a GUI elemeihez a handlereket (\textit{App.Setup.setupGui})
+	\item Betölti a betöltendő keresési útvonalakat és modulokat a GHCi-be (\textit{Eval.Ghci.loadModules}).
+	\item Beállítja, hogy az alkalmazás bezárásakor álljon le a GHCi és a modulok konfigurációja kerüljön mentésre.
+	\item Megjeleníti a GUI-t és elindítja a main loopot. 
+\end{compactenum}
+
+\subsection{App.CreateEnv}
+
+Ez a modul exportálja az \textit{App.RunApp}-ban használt \mbox{\textit{createEnv :: IO Env}} akciót.
+
+A \textit{createEvalControl :: IO EvalControl} segédakció hozza létre az \textit{evalControl} mező tartalmát. Az \textit{eGhci} mezőhöz elindít egy GHCi-t. A GHCi alapértelmezett munkakönyvtára az alkalmazás futtatásának helye. Az \textit{eCommand} és \textit{eResult} mezőkhöz létrehoz egy-egy üres \textit{MVar}-t. Az \textit{eConfig} mező tartalmát beolvassa a konfigurációs fájlból (\textit{Persistence.loadModuleConfig}).
+
+A state mező az üres számolótáblával kerül inicializálásra (\textit{Spreadsheet.Interface.emptySpreadSheet}). A file mező \textit{Nothing}-gal kerül inicializálásra, mivel kezdetben nincs betöltve fájl az alkalmazásba
+
+A \textit{createGui :: IO Gui} segédakció építi fel a GUI-t. Az alkalmazás grafikus felületét egy \textit{Window} tartalmazza (\textit{mainWindow}). Ennek az ablaknak a gyereke egy \textit{VBox}, amely a további widgeteket tartalmazza.   Ezek rendre a menüsor (egy \textit{HBox}, ami \textit{Button}-öket tartalmaz),  az egysoros kódszerkesztő (\textit{Entry}), a cellákat tartalmazó táblázat (\textit{Table}), a logot megjelenítő \textit{ScrolledWindow} és a parancssornak megfelelő \textit{Entry}.
+
+A \textit{Table} létrehozásakor jönnek létre a cellák megjelenítésére szolgáló \textit{Entry}-k, melyek a pozíciójukat leíró kulccsal együtt kerülnek mentésre.
+
+A menüsor gombjaihoz itt kerülnek hozzárendelésre a billentyűkombinációk.
+
+Az akció "*new file"-ra állítja a fő ablak címét, mivel az alkalmazás elindításakor nincs betöltött fájl.
+
+\subsection{App.Setup}
+
+Ez a modul exportálja a \textit{setupGui} akciót, amelynek feladata, hogy a GUI-hoz eseménykezelőket rendeljen. Ezek az eseménykezelők definiálják az alkalmazás lényegi működését. A \textit{setupGui} akció rendre végrehajtja a \textit{setupEditor}, \textit{setupCommandLine}, \textit{setupMenubar} és \textit{setupTable} akciókat, amelyek definiálják az egyes GUI komponensek működését. Ezek az akciók a megfelelő nevű \textit{App.Setup.*} almodulban vannak definiálva.
+
+Az eseménykezelők megadásához egy \textit{IO ()} akcióra vagy egy \mbox{\textit{Event-> IO ()}} függvényre van szükség. Ez azért hátrányos, mert nem lehetséges az eseménykezelőket közvetlenül a ReaderT kontextusban definiálni. Ezért az eseménykezelők megadására az alábbi minta használatos:
+
+\lstset{caption={Az eseménykezelők hozzárendelése}, label=src:ehandler}
+\begin{lstlisting}[language={Haskell}]
+setupSomeWidget :: ReaderT Env IO ()
+setupSomeWidget = do
+	widget <- ...
+	env <- ask
+	...
+	void $ lift $ onSomeEvent widget $ runReaderT handlerAction env
+	
+handlerAction :: ReaderT Env IO ()
+\end{lstlisting}
+
+Tehát a eseménykezelőt hozzárendelő függvény lekérdezi a globális állapotot, és a handler nem más, mint egy ReaderT IO akció futtatása a globális állapottal. Így viszonylag kényelmesen használható a globális állapot a handlerek megírásakor. A fent leírt minta akkor is alkalmazható, ha van egy extra \textit{Event} paraméter (pl. \textit{onFocusOut}).  Ilyenkor a \textit{handlerAction}-nek paraméterként adható az \textit{Event}.
+
+\subsection{App.Setup.Global}
+
+Ez a modul olyan akciókat definiál, melyeket az \textit{App.Setup} további almoduljai felhasználhatnak. Az alább leírtak mellett a modul exportál néhány, a globális állapot egyes komponenseinek lekérdezését kényelmesebbé tevő akciót is.
+
+\subsubsection{setTitle :: String -> ReaderT Env IO ()}
+
+A fő ablak címét a megadott \textit{String}-re állítja.
+
+\subsubsection{logAppendText :: String -> ReaderT Env IO ()}
+
+A paraméterként kapott \textit{String}-et új sorként hozzáadja a log aljához, majd legörget a logot tartalmazó \textit{ScrolledWindow}-ban. A legörgetés többsoros üzenet esetén csak az első sorig görget le. Ez egy ismert hiba, amit egyelőre nem sikerült javítani. Jelenleg nincs számontartva a log mérete, és nincs is maximális mérete. Ennek értelmében a logüzeneteket tartalmazó buffer mérete tetszőlegesen nagy lehet. \textbf{EZT FULL KI KÉNE JAVÍTANI AM XC}
+
+\subsubsection{updateView :: ReaderT Env IO ()}
+
+A globális állapot \textit{state} mezője alapján frissíti a cellákban megjelenő szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt.
+
+\subsubsection{evalAndSet :: CellID -> ReaderT Env IO}
+
+Kiértékeli a megadott azonosítójú cellához generált kódrészleteket, majd a kiértékelés eredményét cacheli a számolótáblába. A betöltött fájl állapotát \textit{Modified}-ra módosítja.
+
+A kiértékeléshez először kódot generál a kapott azonosítóhoz \mbox{(\textit{Spreadsheet.CodeGeneration.generateCode})}. Kódgenerálási hiba esetén logolja a hibát jelző üzenetet. 
+
+Ha sikeres volt a kódgenerálás, akkor a kapott sorrendben kiértékeli az utasításokat a GHCi-ben. Ehhez először törli a korábbi GHCi bindingokat az \textit{Eval.Ghci.loadModules} akcióval. Erre azért van szükség, hogy ha egy cellához rendelt változót nem sikerült kiszámítani (pl. típushiba miatt), akkor a leszármazott cellához ne legyen felhasználható egy korábbi kiértékeléskor kiszámított, elavult érték. Ezután kiértékeli a külső dependenciákat, azaz azon cellákat, amelyek nem függnek a megváltoztatott cellától, de függőségei valamely  a megváltoztatott cellától függő cellának. (Ez a kódgenerálás által adott első lista.)
+
+Ezután következik a második lista utasításainak kiértékelése. Minden utasítás esetén először kiértékeli az "értékadást". Ha az eredmény hiba, a kiértékelés eredménye hiba. Ha az eredmény nem hiba, akkor lekérdezi a kiértékelt változót. A kódgenerálás garanciát ad arra, hogy egy cella mindig a függőségei után kerül kiértékelésre.
+
+Az összegyűjtött eredmények ezután cacheltetnek \mbox{(\textit{Spreadsheet.Interface.cacheCell})}. A betöltött fájl állapota \textit{Modified} lesz.
+
+\subsubsection{updateView :: ReaderT Env IO}
+
+A számolótábla állapota alapján frissíti a cellákban megjelenített szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt. A cellatartalmak lekérdezése a GUI \textit{entryKeys} komponensében tárolt kulcsok alapján történik.
+
+\subsection{App.Setup.CommandLine}
+
+A modul a parancssor (\textit{Entry}) \textit{onEntryActivate} eseményéhez (enter billentyű leütése) rendel eseménykezelőt. Az esemény hatására bekövetkező viselkedés a következő:
+\begin{compactenum}
+	\item A parancssorban lévő szöveg parancsként parseoltatik.
+	\item Ha GHCi parancsként értelmezhető (a parseolás eredménye \textit{ClGhci cmd}), akkor végrehajtatik a GHCi parancs, és az eredmény logolásra kerül.
+	\item Ismeretlen parancs esetén logolásra kerül a hiba.
+	\item A parancsorból eltűnik a szöveg.
+\end{compactenum}
+
+\subsection{App.Setup.Editor}
+
+A modul a kódszerkesztő (\textit{Entry}) \textit{onFocusOut} (fókusz elvesztése), \textit{onFocusIn} (fókusz megszerzése) és \textit{onEntryActivate} eseményeihez rendel eseménykezelőt.
+
+A fókusz elvesztésekor és az enter leütésekor az alábbi viselkedés következik be:
+\begin{compactenum}
+	\item Amennyiben nem volt kiválasztva cella a táblában, nem történik semmi.
+	\item Amennyiben volt kiválasztott cella, a cella állapota módosításra kerül a bevitt szöveg alapján (\mbox{\textit{Spreadsheet.Interface.setCellState)}}. Ha ezzel megváltozott a cella állapota, végrehajtódik egy kiértékelés, aminek a gyökere a megváltoztatott cella. (\mbox{\textit{App.Setup.Global.evalAndSet}}).
+	\item Frissül a táblanézet ((\mbox{\textit{App.Setup.Global.updateView)}}
+\end{compactenum}
+
+A fókusz megszerzésekor amennyiben volt kijelölt cella, úgy annak a legutóbb megadott kódja jelenik meg a szerkesztőben.
+
+\subsection{App.Setup.Menubar}
+
+A modul eseménykezelőket rendel a menüsor gombjainak (\textit{Button}) \textit{onClicked} eseményéhez.
+
+\subsubsection{runAreYouSureDialog :: IO Bool}
+
+Ez a segédakció egy felugró ablak segítségével visszaad egy igen-nem választ ("biztos-e ebben" dialógus). Több handler is használja, amikor fennálna a lehetőség, hogy a végrahajtandó akció végrehajtása során elvesznének nem mentett információk.
+
+\subsubsection{getFileChooserDialog :: FileChooserAction -> IO FileChooserDialog}
+
+Ez a segédakció hozza létre a mentéshez és betöltéshez szükséges dialógusokat. A kapott paramétertől függ, hogy mentéshez vagy betöltéshez szükséges dialógus jön létre.
+
+\subsubsection{newAction :: ReaderT Env IO ()}
+
+A "New" gomb megnyomásakor az alábbiak történnek:
+\begin{compactenum}
+	\item Felugrik a "biztos-e ebben" dialógus
+	\item Nemleges válasz esetén nem történik semmi.
+	\item Igenlő válasz esetén a globális állapot \textit{state} mezőjébe egy üres számolótábla kerül. A \textit{file} mező értéke \textit{Nothing} lesz. Az ablak címe "*new file" lesz.
+	\item Frissül a nézet
+\end{compactenum}
+
+\subsubsection{loadAction :: ReaderT Env IO ()}
+
+A "Load" gomb megnyomásakor az alábbiak történnek:
+\begin{compactenum}
+	\item 
+\end{compactenum}
