@@ -117,13 +117,13 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 	\end{itemize}
 	\item \textbf{Eval} -- kifejezések GHCi-ban történő kiértékelése
 	\begin{itemize}
+		\item \textbf{Spreadsheet.CodeGeneration} -- kódgenerálás a kiértékeléshez (ezen modul dokumentációjában szerepel a kiértékelési modell leírása is)
 		\item \textbf{Eval.EvalMain} -- a tényleges kiértékelést végző szál főprogramja
 		\item \textbf{Eval.Ghci} -- az App számára biztosított interfész a kiértékeléshez
 	\end{itemize}
 	\item \textbf{Persistence} -- az App számára biztosított interfész fájlok mentéséhez és betöltéséhez
 	\item \textbf{Spreadsheet} -- a számolótábla reprezentációja és műveletei
 	\begin{itemize}
-		\item \textbf{Spreadsheet.CodeGeneration} -- kódgenerálás a kiértékeléshez, \textbf{FULL NEM ITT KÉNE LENNIE 44!4!!4}
 		\item \textbf{Spreadsheet.Interface} -- a számolótábla műveletei, amiket az App használhat
 		\item \textbf{Spreadsheet.Parser} -- felhasználó által írt kód reprezentációjának előállítása
 		\item \textbf{Spreadsheet.Types} -- a számolótábla és kapcsolódó kivételek típusdefiníciói
@@ -298,9 +298,35 @@ Ehhez szükség van a megadott \textit{String} \textit{Cell} reprezentációjár
 
 \subsubsection{cacheCell}
 
-\subsection{Spreadsheet.CodeGeneration}
+\subsection{Eval.CodeGeneration}
 
+A kiértékelési folyamat az alábbi szempontok alapján került megtervezésre:
+\begin{compactenum}
+	\item Listán értelmezett függvények esetén legyen lehetőség könnyen kezelni az üres cellákat, alapértelmezett értékek megadásával.
+	\item Ha a kiértékelés során hiba történik, annak a hatása minimális legyen.
+\end{compactenum}
 
+Az első szempont megvalósításához a kiértékelés során egy kiszámított vagy paraméterként kapott \textit{a} típusú értéket egy \textit{Maybe a} típusú érték reprezentálja. Az üres cellákat \textit{Nothing} reprezentálja, az értékkel rendelkező cellákat pedig egy \textit{Just} érték. Egy a kiértékelés során kiszámított cellaérték is mindig egy \textit{Just}-ba csomagoltatik. Ennek megfelelően \textit{a} típusú cellaértékek listájának futásidejű reprezentációja egy \textit{[Maybe a]}. A Haskellben megszokott listafüggvények a felhasználói dokumentációban részletesen leírt \textit{€} operátor segítségével használhatók ezen a reprezentáción.
+
+A második szempont megvalósításához a kódgenerálás során értékadások sorozata jön létre, és a kiértékelés során ezen értékadások egyesével hajtódnak végre. Így ha valamelyik cella kiértékelésének eredménye egy hiba, csak a tőle függő cellák értéke lesz hiba. 
+
+Ha sikeres a generálás, a \textit{generateCode} függvény eredménye két (egy \textit{Right} konstruktorba csomagolt) lista (\textit{[String],[(String,CellID)]}. Az első listába kerülnek az értékadások, amelyek az úgynevezett külső függőségekhez lettek generálva. A második lista tartalmazza az olyan értékadásokat, amelyek a megváltoztatott id-jű cellától függnek. A \textit{Spreadsheet.Types} modulnál tárgyalt gráfreprezentáció segítségével az előbbi két fogalmat az alábbi módon tehetjük precízzé: 
+
+Legyen \textit{id} a megváltoztatott cella id-je, és legyen $lab : CellID \rightarrow Cell$ a gráf csúcsaihoz a megfelelő cellát hozzárendelő függvény! Legyenek $For,Lab : Cell \rightarrow \L$ predikátumok, amelyek akkor adnak igazat, ha a paraméterük a megfelelő konstruktorral jött létre. Legyen \textit{b} egy létező cellaazonosító! Ekkor:
+\begin{align*}
+	\text{b külső függőség} &\Leftrightarrow \exists c: (\exists (id \rightarrow c \text{ út}) \wedge \exists (b \rightarrow c \text{ út}) \wedge \not\exists  (id \rightarrow b \text{ út})) \\
+	& \vee((b=id) \wedge Val(lab(b))) \\
+	\text{b függ id-től} &\Leftrightarrow ((b \not= id) \wedge \exists (id \rightarrow b \text{ út}) \\
+	&\vee ((b = id) \wedge For(lab(b)))
+\end{align*}
+
+A külső függőségeket olyan módon kell sorrendbe rendezni, hogy az eredménylistában egy cella csak az őt megelőző külső függőségektől függjön. Ekkor az értékadásokat lehetséges a lista által megadott sorrendben végrehajtani. A sorba rendezéshez a leghosszabb utak algoritmusa szerinti szintek használatosak, ezek alapján kerülnek növekvő sorrendbe a külső függőségek. Könnyű látni, hogy ez a sorrend megfelel a fent megfogalmazott elvárásnak.  
+
+A kódgeneráláshoz szükséges ellenőrizni, hogy a kapott külső függőségek értéke kiolvasható-e. Ez akkor lehetséges, ha a külső függőség egy \textit{Val}, vagy egy olyan \textit{For}, amelybe van cachelve érték.
+
+Az \textit{id}-től függő cellák esetén (ezek szükségszerűen formulák) azt kell ellenőrizni, hogy sikerült-e parseolni. (Ez ekvivalens azzal, hogy a \textit{\_value} értéke \textit{Just}.
+
+A
 
 \subsection{Eval.EvalMain}
 
@@ -501,19 +527,24 @@ Ez a segédakció egy felugró ablak segítségével visszaad egy igen-nem vála
 
 Ez a segédakció hozza létre a mentéshez és betöltéshez szükséges dialógusokat. A kapott paramétertől függ, hogy mentéshez vagy betöltéshez szükséges dialógus jön létre.
 
-\subsubsection{newAction :: ReaderT Env IO ()}
+\subsubsection{newAction :: ReaderT Env IO () -- USERBE MEGY}
 
 A "New" gomb megnyomásakor az alábbiak történnek:
 \begin{compactenum}
-	\item Felugrik a "biztos-e ebben" dialógus
+	\item Felugrik a "biztos-e ebben" dialógus.
 	\item Nemleges válasz esetén nem történik semmi.
 	\item Igenlő válasz esetén a globális állapot \textit{state} mezőjébe egy üres számolótábla kerül. A \textit{file} mező értéke \textit{Nothing} lesz. Az ablak címe "*new file" lesz.
 	\item Frissül a nézet
 \end{compactenum}
 
-\subsubsection{loadAction :: ReaderT Env IO ()}
+\subsubsection{loadAction :: ReaderT Env IO () -- USERBE MEGY}
 
 A "Load" gomb megnyomásakor az alábbiak történnek:
 \begin{compactenum}
-	\item 
+	\item Megjelenik a betöltéshez szolgáló fájlválasztó dialógus.
+	\item Amennyiben a felhasználó a "Load" gombra kattintott, és megadott egy fájlnevet.
 \end{compactenum}
+
+\subsection{App.Setup.Table}
+
+A modul eseménykezelőket rendel a cellák megjelenítésére szolgáló \textit{Entry}-k \textit{onFocusIn} és \textit{onFocusOut} eseményeihez.
