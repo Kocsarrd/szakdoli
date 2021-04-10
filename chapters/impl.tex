@@ -324,9 +324,24 @@ A külső függőségeket olyan módon kell sorrendbe rendezni, hogy az eredmén
 
 A kódgeneráláshoz szükséges ellenőrizni, hogy a kapott külső függőségek értéke kiolvasható-e. Ez akkor lehetséges, ha a külső függőség egy \textit{Val}, vagy egy olyan \textit{For}, amelybe van cachelve érték.
 
-Az \textit{id}-től függő cellák esetén (ezek szükségszerűen formulák) azt kell ellenőrizni, hogy sikerült-e parseolni. (Ez ekvivalens azzal, hogy a \textit{\_value} értéke \textit{Just}.
+Az \textit{id}-től függő cellák esetén (ezek szükségszerűen formulák) azt kell ellenőrizni, hogy sikerült-e parseolni. Ez ekvivalens azzal, hogy a \textit{\_value} mező értéke \textit{Just}.
 
-A
+A függőségek listáinak kiszámítása és a fenti ellenőrzések elvégzése a \textit{depList} függvény feladata. A leghosszabb utak szerinti szinteket kiszámító függvény a \textit{GraphFunctions} modulban szerepel. 
+
+Az értékadások generálásáért a \textit{codeG} függvény felel. Ez az \textit{n} azonosító cellához egy \textit{vn = someCode} formájú értékadást generál. A \textit{someCode} részt külső függőség esetén a \textit{cacheG}, \textit{id}-től függő cella esetén a \textit{cellG} függvény számítja ki.
+
+A \textit{cacheG} függvény üres cellákhoz a \textit{"Nothing"} stringet rendeli. Számokhoz és stringekhez pedig egy \textit{"Just val"} stringet, ahol \textit{val} a megfelelő szám/string. Amennyiben egész számról van szó, a függvény levágja a tizedesrészt a számliterálról, hogy a GHCi egész típusúként értelmezhesse a literált.
+
+A \textit{cellG} függvény a formula \textit{\_value} komponensének elemeiből egy stringet állít elő. Ehhez a \textit{\_value} mező minden eleméhez egy stringet rendel, és ezeket konkatenálja, majd a legvégén eléír egy \textit{"Just \$ "}-t. A függvény az egyes elemekhez az alábbi módon rendel stringeket:
+\begin{compactenum}
+	\item \textit{Code code} $\rightarrow$ code
+	\item \textit{Refs [n]} $\rightarrow$ "fromJust v\textit{n}"
+	\item \textit{Refs ids}, ha $|ids| > 1 \ \rightarrow$ az ids-ben szereplő cellaazonosítókból generált változónevek listája. Pl. ids=\textit{[1,2,3]} esetén \textit{"[v1,v2,v3]"}
+\end{compactenum}
+
+A fenti leírásból jól látszik, hogy egy cella értéke mindig \textit{Just}-ba lesz csomagolva. Ha egy cella értékét akarjuk használni, az a "szokásos módon" megtehető, mivel a változónév elé egy \textit{fromJust} kerül. Cellák listája esetén azonban \textit{Just} értékek listáját kapjuk. Ez esetben tehát a szokásos Haskell függvények nem a megszokott módon működnek, de az \textit{€} operátor segítségével ez könnyen áthidalható. Érdemes megjegyezni, hogy a cellákhoz kiszámított érték mindig \textit{Maybe a} típusú lesz, így az eredmény kinyeréséhez a \textit{fromJust vn} kód szükséges. Ha az eredmény \textit{Nothing}, ez futásidejű hibát okoz, amit a hívó ki tud olvasni a GHCi-ból, és cachelhet egy hibát a kiértékelt cellához (\textit{EGhciError}).
+
+A modul által exportált \textit{generateCode} függvény segítségével végezhető el a fent leírt kódgenerálás. 
 
 \subsection{Eval.EvalMain}
 
@@ -548,3 +563,7 @@ A "Load" gomb megnyomásakor az alábbiak történnek:
 \subsection{App.Setup.Table}
 
 A modul eseménykezelőket rendel a cellák megjelenítésére szolgáló \textit{Entry}-k \textit{onFocusIn} és \textit{onFocusOut} eseményeihez.
+
+\section{Tesztelés}
+
+LOL XD HAHA TESZTEK OMEGALUL XC
