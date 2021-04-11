@@ -30,7 +30,7 @@ A fentebb referált cikk által inspirálva a (GUI komponensein kívüli) globá
 
 Ezen bevezető után tekintsük a globális állapot definícióját! Az alábbi típusdefiníció az \textit{App.Types} modulban található:
 \lstset{caption={Az Env típus}, label=src:hs}
-\begin{lstlisting}[language={Haskell}]
+\begin{lstlisting}[language={Haskell}, label=src:env]
 data EvalConfig = EvalConfig { modules :: [String]
                              , paths :: [String]
                              }
@@ -67,7 +67,7 @@ Az \textit{EvalConfig} típus példánya \textit{Generic} és \textit{Serialize}
 
 Az alábbi kódrészlet a GUI definíciója az \textit{App.Types} modulból:
 
-\lstset{caption={A Gui típus}, label=src:hs}
+\lstset{caption={A Gui típus}, label=src:gui}
 \begin{lstlisting}[language={Haskell}]
 data Menubar = Menubar { newButton :: Button
                        , saveButton :: Button
