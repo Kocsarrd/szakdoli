@@ -144,10 +144,11 @@ Az \textit{Empty} modul (\textbf{ÁT LESZ NEVEZVE!!}) biztosítja a \textit{Prel
 
 \subsection{A könyvtár bővítése}
 
-A felhasználónak lehetősége van saját modulokat írni az alkalmazáshoz, és azokat használni. (A modulok importálásáról a 2.3 szakaszban esett szó.) Saját függvények írásakor érdemes explicit kiírni a típusokat, ugyanis a monomorfizmus-megszorítás (\textbf{KELL LINK?}) miatt a Haskell fordító gyakran túl specifikus típust következtet ki. A standard könyvtár definiál két típusszinomimát listafüggvényekhez:
+A felhasználónak lehetősége van saját modulokat írni az alkalmazáshoz, és azokat használni. (A modulok importálásáról a 2.3 szakaszban esett szó.) Saját polimorf függvények írásakor érdemes explicit kiírni a típusokat, ugyanis a monomorfizmus-megszorítás (\textbf{KELL LINK?}) miatt a Haskell fordító gyakran túl specifikus típust következtet ki. A standard könyvtár definiál két típusszinomimát listafüggvényekhez:
 
 \begin{lstlisting}[caption={LFun és NLFun}, language={Haskell},label=src:lfun]
 type LFun a b = [Maybe a] -> b
 type NLFun a b = Num a => [Maybe a] -> b
 \end{lstlisting}
 
+Emellett természetesen tetszőleges Haskell modul betölthető az alkalmazásba.	
