@@ -41,14 +41,6 @@ A fentiek megléte esetén a program az alábbi paranccsal fordítható:
 	\item Az alkalmazáshoz tartozó parancssor. A beírt parancs akkor kerül kiértékelésre, ha a felhasználó leüti az entert.
 \end{compactenum}
 
-\section{A parancssorban használható parancsok}
-
-\subsection{Kifejezés kiértékelése GHCi-ban}
-
-A program a cellák kódjának kiértékeléséhez a háttérben egy GHCi példányt futtat. Jelölje a $\_$ a szóköz karaktert és $C$ az összes karakterek halmazát. Amennyiben a beütött parancs $\_^+g\_^+C^*$ alakú, a "g"-t követő szóközök utáni részstring kiértékeltetik a GHCi-ban. A kiértékelés eredménye megjelenik log üzenetként. 
-
-Ezen parancs segítségével lehetséges modulokat importálni és bindingokat létrehozni a GHCi által használt IO monádban. Azonban minden egyes cellakiértékelés előtt a bindingok elvesznek, a betöltött modulok pedig azok lesznek, amelyek a "Modules" menüpontban meg lettek adva. Így a gyakorlatban a GHCi ezen funkciói nem használhatók.
-
 \section{Cellák és kiértékelés}
 
 \subsection{A kifejezések}
@@ -151,4 +143,25 @@ type LFun a b = [Maybe a] -> b
 type NLFun a b = Num a => [Maybe a] -> b
 \end{lstlisting}
 
-Emellett természetesen tetszőleges Haskell modul betölthető az alkalmazásba.	
+Emellett természetesen tetszőleges Haskell modul betölthető az alkalmazásba.
+
+\section{A parancssorban használható parancsok}
+
+\subsection{Kifejezés kiértékelése GHCi-ban}
+
+A program a cellák kódjának kiértékeléséhez a háttérben egy GHCi példányt futtat. Jelölje a $\_$ a szóköz karaktert és $C$ az összes karakterek halmazát. Amennyiben a beütött parancs $\_^+g\_^+C^*$ alakú, a "g"-t követő szóközök utáni részstring kiértékeltetik a GHCi-ban. A kiértékelés eredménye megjelenik log üzenetként. 
+
+Ezen parancs segítségével lehetséges modulokat importálni és bindingokat létrehozni a GHCi által használt IO monádban. Azonban minden egyes cellakiértékelés előtt a bindingok elvesznek, a betöltött modulok pedig azok lesznek, amelyek a "Modules" menüpontban meg lettek adva. Így a gyakorlatban a GHCi ezen funkciói nem használhatók.
+
+\subsection{Cellatartalom másolása és áthelyezése}
+
+A \textit{cp} parancs használható cellák egy blokkjának átmásolására, az \textit{mv} parancs pedig egy cellablokk áthelyezésére. A két parancs szintaxisa nagyon hasonló formátumú: \textit{<parancs> <listahivatkozás> <egyszerű hivatkozás>}
+
+A listahivatkozás adja meg a másolandó/áthelyezendő tartományt (bal felső és jobb alsó sarok), az egyszerű hivatkozás pedig a céltartomány bal felső sarkát. Példák:
+\begin{compactenum}
+	\item \textit{mv §a0:a5§ §b10§}
+	\item \textit{cp §b1:c3§ §e9§}
+	\item \textit{cp §a0:a3§ §a1§}
+\end{compactenum}
+
+A parancsot lehet úgy paraméterezni, hogy a kiinduló és a céltartomány átfedésben legyen (fenti 3. példa). Ebben az esetben a parancs az új értékekkel felülírja a metszetben lévő cellákat. Ha pl. a harmadik példában \textit{§a0:a4§} rendre \textit{[1,2,3,4,ÜRES]}, akkor a parancs végrehajtása után \textit{[1,1,2,3,4]} lesz a cellák tartalma.
