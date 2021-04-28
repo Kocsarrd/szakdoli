@@ -584,13 +584,18 @@ A fókusz elvesztésekor/enter leütésekor ugyanaz történik, mint az editor e
 
 \subsection{A komponensek tesztelése}
 
-A tesztelés első fázisában az egyes komponensek kerültek tesztelésre. Az alábbiakban felsorolászerűen szerepelnek a tesztelt függvények, és a függvényenkénti tesztelési szempontok. A tesztesetek kézzel készültek a megadott szempontok alapján. Az egyes modulokhoz tartozó tesztesetek a \textit{Test.<modulnév>} modulokban találhatók. Mindegyik tesztmodul exportál egy \textit{run<modulnév>Test :: IO ()} akciót, amely a standard outputra logolja a tesztelés eredményét. \textbf{IDE MÉG ÍROK, HA TÉNYLEGESEN KÉSZ LESZNEK A TESZTEK.}
+A tesztelés első fázisában az egyes komponensek kerültek tesztelésre. Az alábbiakban felsorolászerűen szerepelnek a tesztelt függvények, és a függvényenkénti tesztelési szempontok. A tesztesetek kézzel készültek a megadott szempontok alapján. 
+Az egyes modulokhoz tartozó tesztesetek a \textit{Test.<modulnév>} modulokban találhatók. Mindegyik tesztmodul exportál egy \textit{run<modulnév>Tests :: IO ()} akciót, amely a standard outputra logolja a tesztelés eredményét. \textbf{IDE MÉG ÍROK, HA TÉNYLEGESEN KÉSZ LESZNEK A TESZTEK.}
 
 \begin{compactenum}
-	\item IDE
-	\item JÖNNEK
-	\item MAJD
-	\item TESZTEK
+	\item Spreadsheet.Parser -- \textit{rep} függvény tesztelése elvárt input-output párokkal
+	\begin{itemize}
+		\item ""
+		\item Számliterálok -- egész, tizedestört (. előtti és utáni rész nélkül is), pozitív és negatív számok
+		\item Formulák -- referencia nélkül, egyszerű és többszörös referenciák, csak referenciát tartalmazó formulák, formula elején/végén levő referencia, referencia kisbetűvel és nagybetűvel is.
+		\item Szintaxishibák -- "=", bezáratlan §, §-on belüli hibás szintaxis.
+		\item Stringliterálok
+	\end{itemize}
 \end{compactenum}
 
 A szoftver komponensei az összes teszten átmentek.
@@ -658,5 +663,26 @@ A tesztelés második fázisában került tesztelésre a szoftver tényleges mű
 		\item Megfelelő log üzenet megjelenésének figyelése.		
 		\item Körkörös hivatkozás megszüntetése.
 	\end{itemize}
-	
+	\item Parse hibák előidézése
+	\begin{itemize}
+		\item A hibás cellában megjelenik az "FNoParse" szöveg
+		\item A hibás cellára hivatkozó cellákban megjelenik az "FNoCache" szöveg.
+		\item \textbf{Egy korábban helyes cellát parseolási hibásra átírva a hibás cellára hivatkozó cellák állapota megváltozik.} A parseolási hibát megszüntetve a leszármazott cellák hibája is megszűnik. (amennyiben a beírt kód helyes).
+	\end{itemize}
+	\item GHCi típus- és futásidejű hibák előidézése
+	\begin{itemize}
+		\item A hibás cellában és a belőle leszármazó cellákban megjelenik az "FGhciError"/"FNoCache" szöveg. \textbf{A hibaüzenetek még nem túl jók a leszármazott cellában.}
+		\item Egy korábban helyes cellát GHCi hibásra átírva a hibás cellára hivatkozó cellák állapota megváltozik. A hibát megszüntetve a leszármazott cellák hibája is megszűnik. (amennyiben a beírt kód helyes).
+	\end{itemize}
+	\item GHCi időtúllépési hibák előidézése
+	\begin{itemize}
+		\item A hibás cellában és a belőle leszármazó cellákban megjelenik az "FTimeoutError"/"FNoCache"/"FGhciError" szöveg. \textbf{A hibaüzenetek még nem túl jók a leszármazott cellában.}
+		\item Egy korábban helyes cellát időtúllépés miatt hibásra átírva a hibás cellára hivatkozó helyes cellák állapota megváltozik. A hibát megszüntetve a leszármazott cellák hibája is megszűnik (amennyiben a beírt kód helyes).
+		\item Az időtúllépés kezelése után nem szivárog ki a leállítandó korábbi GHCi folyamatok egyike sem.
+	\end{itemize}
+	\item A kódszerkesztő tesztelése 
+	\begin{itemize}
+		\item A 8-12. tesztek elvégzése a kódszerkesztőt (is) használva, nemcsak közvetlenül a cellákba írva a kódot.
+		\item Új fájl megnyitásakor cella kijelölése előtt a kódszerkesztőbe írásnak nincs hatása.	
+	\end{itemize}		
 \end{compactenum}
