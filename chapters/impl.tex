@@ -582,27 +582,44 @@ A fókusz megszerzésekor a kiválasztott cella értéke beállításra kerül,
 A fókusz elvesztésekor/enter leütésekor ugyanaz történik, mint az editor esetén.
 \section{Tesztelés}
 
-\subsection{A komponensek tesztelése}
+\subsection{A tesztelés folyamata}
 
-A tesztelés első fázisában az egyes komponensek kerültek tesztelésre. Az alábbiakban felsorolászerűen szerepelnek a tesztelt függvények, és a függvényenkénti tesztelési szempontok. A tesztesetek kézzel készültek a megadott szempontok alapján. 
+A tesztelés első fázisában az egyes komponensek kerültek tesztelésre. Az egyes komponensekhez tartozó tesztelési tervekben szerepelnek a tesztelt függvények, és a függvényenkénti tesztelési szempontok. A tesztesetek kézzel készültek a megadott szempontok alapján. 
 Az egyes modulokhoz tartozó tesztesetek a \textit{Test.<modulnév>} modulokban találhatók. Mindegyik tesztmodul exportál egy \textit{run<modulnév>Tests :: IO ()} akciót, amely a standard outputra logolja a tesztelés eredményét. \textbf{IDE MÉG ÍROK, HA TÉNYLEGESEN KÉSZ LESZNEK A TESZTEK.}
+A tesztelés második fázisában került tesztelésre a szoftver tényleges működése. A felhasználói tesztelés kézzel történt a megfelelő szakaszban \textbf{IDE KELL SZÁM} felsorolásszerűen leírt szempontok alapján. \textbf{Vastag betűvel jelzem a nem teljesített teszteseteket.}
+
+\subsection{Test.Spreadsheet.*}
+
+\subsubsection{Test.Spreadsheet.Parser}
+
+A \textit{Spreadsheet.Parser} modulból az általa egyedüliként exportált \textit{rep} függvény teszteltetett. A tesztelés input-elvárt output párok segítségével történt, és az alább leírt eseteket fedte le:
 
 \begin{compactenum}
-	\item Spreadsheet.Parser -- \textit{rep} függvény tesztelése elvárt input-output párokkal
-	\begin{itemize}
-		\item ""
-		\item Számliterálok -- egész, tizedestört (. előtti és utáni rész nélkül is), pozitív és negatív számok
-		\item Formulák -- referencia nélkül, egyszerű és többszörös referenciák, csak referenciát tartalmazó formulák, formula elején/végén levő referencia, referencia kisbetűvel és nagybetűvel is.
-		\item Szintaxishibák -- "=", bezáratlan §, §-on belüli hibás szintaxis.
-		\item Stringliterálok
-	\end{itemize}
+	\item ""
+	\item Számliterálok -- egész, tizedestört (. előtti és utáni rész nélkül is), pozitív és negatív számok
+	\item Formulák -- referencia nélkül, egyszerű és többszörös referenciák, csak referenciát tartalmazó formulák, formula elején/végén levő referencia, referencia kisbetűvel és nagybetűvel is.
+	\item Szintaxishibák -- "=", bezáratlan §, §-on belüli hibás szintaxis.
+	\item Stringliterálok
 \end{compactenum}
 
-A szoftver komponensei az összes teszten átmentek.
+\subsubsection{Test.Spreadsheet.Interface}
+
+A \textit{Spreadsheet.Interface} modul által exportált függvények közül
+csak a \textit{setCellState} és \textit{cacheCell} függvények lettek tesztelve. A további függvények helyes működésének ellenőrzésére elégséges elvégezni a felhasználói teszteket. Ezek többnyire triviálisan implementált getter/setter jellegű függvények.
+A tesztesetek műveletek sorozatával transzformálnak egy kezdeti üres számolótáblát. Minden művelet végrehajtása után ellenőrzésre kerül, hogy a művelet megőrizte-e a 3.1. táblázatban leírt típusinvariánst. A nem tesztelt függvények esetén az invariáns megőrzése triviálisan teljesül.
+Alább felsorolásszerűen szerepelnek a \textit{setCellState} függvényhez tartozó tesztelési szempontok:
+
+\begin{compactenum}
+	\item Értékek, hivatkozást nem tartalmazó formulák hozzáadása, módosítás (\textit{setSimple} teszteset)
+	\item Formulák hozzáadása, körmentesen (\textit{refsNoCycle} teszteset)
+	\item 1, 2 és több hosszú körök előidézésének megkísérlése. (\text{tryCycle*} tesztesetek)
+	\item Nem hivatkozott cella üressé tétele, ekkor a megfelelő csúcsnak el kell tűnnie a gráfból.
+	\item Hivatkozott cella üressé tétele.
+	\item Parseolási hibát előidéző \textit{String} paraméter megadása.
+	\item Cella módosításakor a cellát reprezentáló csúcsba bemenő és kimenő élek ellenőrzése (több tesztesetben is).
+\end{compactenum}
 
 \subsection{Felhasználói tesztek}
-
-A tesztelés második fázisában került tesztelésre a szoftver tényleges működése. A felhasználói tesztelés kézzel történt az alább, felsorolásszerűen leírt szempontok alapján. Vastag betűvel jelzem a nem teljesített teszteseteket.
 
 \begin{compactenum}
 	\item Az alkalmazás indítása
