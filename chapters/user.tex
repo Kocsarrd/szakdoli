@@ -45,11 +45,11 @@ A fentiek megléte esetén a program az alábbi paranccsal fordítható:
 
 \subsection{A kifejezések}
 
-Egy cella tartalma négyféle lehet: üres cella, szám, szöveg vagy formula. A cellába beírt kifejezés pontosan akkor formula, ha az első karaktere "=". Amennyiben az első karakter nem "=", és a beírt szöveg értelmezhető tizedestörtként, annyiban a cella tartalma számként kerül értelmezésre. Minden más esetben a cella tartalma egy string. Példák:
+Egy cella tartalma négyféle lehet: üres cella, szám, szöveg vagy formula. A cellába beírt kifejezés pontosan akkor formula, ha az első (nem szóköz) karaktere "=". Amennyiben az első (nem szóköz) karakter nem "=", és a beírt szöveg értelmezhető tizedestörtként, annyiban a cella tartalma számként kerül értelmezésre. Minden más esetben a cella tartalma egy string. Példák:
 \begin{compactenum}
-	\item Szám: "0.12", "11"
-	\item Formula: "=sum [1..10]", "=§a0§+sumD §a2:b4§"
-	\item String: " =sum [1..10]", "alma", ".12"
+	\item Szám: "0.12", "-11", "-12.", ".123"
+	\item Formula: " =sum [1..10]", "= §a0§+sumD §a2:b4§"
+	\item String: "alma", ".12aa"
 \end{compactenum}
 
 A formulákba lehetséges cellahivatkozásokat írni. Kétféle cellahivatkozás létezik:

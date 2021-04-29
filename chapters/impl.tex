@@ -221,11 +221,11 @@ További megjegyzések a \textit{Spreadsheet} típussal kapcsolatban:
 
 A modul feladata egy a felhasználó által egy cellához megadott kód (\textit{String}) reprezentációjának (\textit{Cell}) előállítása. A modul egy függvényt exportál. (\textit{rep :: String -> Cell)}
 
-Legyen a felhasználó által megadott kód \textit{str}. A \textit{rep} függvény az alábbi specifikáció szerint állítja elő a kód cellareprezentációját.
+Legyen a felhasználó által megadott kód \textit{str}. A \textit{rep} függvény az alábbi specifikáció szerint állítja elő a kód cellareprezentációját. A reguláris kifejezések megadásakor a kifejezésre illeszkedő string előtt és után tetszőlegesen sok szóköz lehet, ha nincs másképp jelezve.
 
 \begin{compactenum}
 	\item Ha str = "", rep str = \textit{Val EmptyCell}
-	\item Ha str illeszkedik a $(+|-|\varepsilon)DD^*(.D^+|\varepsilon))$ reguláris kifejezésre, ahol D=(0|1|2|3|4|5|6|7|8|9), akkor rep str = \textit{Val (Num n)}, ahol \textit{n} a literál által ábrázolt lebegőpontos szám. 
+	\item Ha str illeszkedik a $((+|-|\varepsilon)D^+(.D^*|\varepsilon))|.D^+)$ reguláris kifejezésre, ahol D=(0|1|2|3|4|5|6|7|8|9), akkor rep str = \textit{Val (Num n)}, ahol \textit{n} a literál által ábrázolt lebegőpontos szám. 
 	\item Ha a fenti esetek egyike sem áll fent, és str nem (=C*) alakú (ahol C az összes karakterek halmaza), akkor rep str = \textit{Val (Str str)}
 	\item Ha B a betűk halmaza (a \textit{Data.Char} modul \textit{isLetter} függvényének igazsághalmaza), C' = $C \backslash \{\S\}$ és str $(=((\S  BD^+:BD^+\S )|(\S BD^+\S )|(C'^+))^+)$ alakú, akkor a kód formulaként parseolható. rep str = \textit{Formula str (Left FNoCache) (Just ps)}, ahol ps definíciója alább szerepel.
 	\item Ha egyik fenti eset sem áll fent, akkor a parseolás sikertelen. Ekkor rep str = \textit{Formula str (Left FNoParse) Nothing}
