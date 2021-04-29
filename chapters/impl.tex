@@ -284,8 +284,12 @@ Ehhez szükség van a megadott \textit{String} \textit{Cell} reprezentációjár
 \begin{compactenum}
 	\item Ellenőrzi, hogy a cella állapotának megváltoztatásával keletkeznék-e 		körkörös referencia. Pontosan akkor keletkeznék, ha a megváltoztatandó $c$ 	azonosítójú cellához tartozó csúcsba bemenő összes él kitörlésével keletkezett gráfban van olyan $n$ azonosítójú csúcs, hogy $c$ kódja hivatkozik $n$-re és a gráfban már van $c \rightarrow n$ út. (Ez utóbbi feltétel azt jelenti, hogy az $n$ cella értéke függ $c$ értékétől.) Ezt a feltételt az \textit{isLegal} függvény ellenőrzi. Érdemes megjegyezni, hogy ilyen hiba csak akkor fordulhat elő, ha a kapott reprezentációnk egy formula.
 	\item Amennyiben az \textit{isLegal} eredménye \textit{False}, a $c$ csúcsban levő cella reprezentációja \textit{For (Formula str' (Left FCycleRefError) Nothing)} lesz, ahol \textit{str'} a paraméterként kapott \textit{String}. A \textit{\_logMessage} mezőbe egy hibaüzenet kerül.
-	\item Amennyiben az \textit{isLegal} függvény \textit{True} eredményt ad, a gráfból kitöröltetik az összes $c$-be menő él, és új $c$-be menő élek kerülnek behúzásra a $c$ kódja által referált celláknak megfelelő csúcsokból. (Ezeket a \textit{references} függvény számolja a reprezentációból.) A \textit{\_logMessage} mező tartalma egy sikert jelző üzenet lesz.
+	\item Amennyiben az \textit{isLegal} segédfüggvény \textit{True} eredményt ad, a gráfból kitöröltetik az összes $c$-be menő él, és új $c$-be menő élek kerülnek behúzásra a $c$ kódja által referált celláknak megfelelő csúcsokból. (Ezeket a \textit{references} függvény számolja a reprezentációból.) A \textit{\_logMessage} mező tartalma egy sikert jelző üzenet lesz.
+	\item Amennyiben a módosított cella üressé vált, az összes olyan üres cellához tartozó csúcs kitöröltetik a gráfból, melyekből csak a módosított cellába ment él.
+	\item Amennyiben a módosított cella üressé vált, és a hozzátartozó csúcs kifoka 0 (nem hivatkozik más cella az üressé tett cellára), úgy a csúcs töröltetik a gráfból.
 \end{compactenum}
+
+Megjegyzés: az utolsó két pont garantálja, hogy nem a program nem tárol feleslegesen cellákat a gráfban.
 
 \subsubsection{cacheCell :: CellID -> Either EvalError String -> Spreadsheet -> Spreadsheet}
 
@@ -612,10 +616,10 @@ Alább felsorolásszerűen szerepelnek a \textit{setCellState} függvényhez tar
 \begin{compactenum}
 	\item Értékek, hivatkozást nem tartalmazó formulák hozzáadása, módosítás (\textit{setSimple} teszteset)
 	\item Formulák hozzáadása, körmentesen (\textit{refsNoCycle} teszteset)
-	\item 1, 2 és több hosszú körök előidézésének megkísérlése. (\text{tryCycle*} tesztesetek)
-	\item Nem hivatkozott cella üressé tétele, ekkor a megfelelő csúcsnak el kell tűnnie a gráfból.
+	\item 1, 2 és több hosszú körök előidé	zésének megkísérlése. (\text{tryCycle*} tesztesetek)
+	\item Nem hivatkozott cella üressé tétele, ekkor a megfelelő csúcsnak el kell tűnnie a gráfból. (\textit{makeEmptyNoRef} teszteset)
+	\item Az üressé tett, nem hivatkozott cella egyedüliként hivatkozik legalább egy üres cellára. Ekkor a hivatkozott üres cella is eltűnik a gráfból. (\textit{makeEmptyNoRef} teszteset)
 	\item Hivatkozott cella üressé tétele.
-	\item Parseolási hibát előidéző \textit{String} paraméter megadása.
 	\item Cella módosításakor a cellát reprezentáló csúcsba bemenő és kimenő élek ellenőrzése (több tesztesetben is).
 \end{compactenum}
 
