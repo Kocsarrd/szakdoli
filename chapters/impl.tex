@@ -589,7 +589,9 @@ A fókusz elvesztésekor/enter leütésekor ugyanaz történik, mint az editor e
 \subsection{A tesztelés folyamata}
 
 A tesztelés első fázisában az egyes komponensek kerültek tesztelésre. Az egyes komponensekhez tartozó tesztelési tervekben szerepelnek a tesztelt függvények, és a függvényenkénti tesztelési szempontok. A tesztesetek kézzel készültek a megadott szempontok alapján. 
+
 Az egyes modulokhoz tartozó tesztesetek a \textit{Test.<modulnév>} modulokban találhatók. Mindegyik tesztmodul exportál egy \textit{run<modulnév>Tests :: IO ()} akciót, amely a standard outputra logolja a tesztelés eredményét. \textbf{IDE MÉG ÍROK, HA TÉNYLEGESEN KÉSZ LESZNEK A TESZTEK.}
+
 A tesztelés második fázisában került tesztelésre a szoftver tényleges működése. A felhasználói tesztelés kézzel történt a megfelelő szakaszban \textbf{IDE KELL SZÁM} felsorolásszerűen leírt szempontok alapján. \textbf{Vastag betűvel jelzem a nem teljesített teszteseteket.}
 
 \subsection{Test.Spreadsheet.*}
@@ -610,6 +612,7 @@ A \textit{Spreadsheet.Parser} modulból az általa egyedüliként exportált \te
 
 A \textit{Spreadsheet.Interface} modul által exportált függvények közül
 csak a \textit{setCellState} és \textit{cacheCell} függvények lettek tesztelve. A további függvények helyes működésének ellenőrzésére elégséges elvégezni a felhasználói teszteket. Ezek többnyire triviálisan implementált getter/setter jellegű függvények.
+
 A tesztesetek műveletek sorozatával transzformálnak egy kezdeti üres számolótáblát. Minden művelet végrehajtása után ellenőrzésre kerül, hogy a művelet megőrizte-e a 3.1. táblázatban leírt típusinvariánst. A nem tesztelt függvények esetén az invariáns megőrzése triviálisan teljesül.
 Alább felsorolásszerűen szerepelnek a \textit{setCellState} függvényhez tartozó tesztelési szempontok:
 
@@ -621,6 +624,24 @@ Alább felsorolásszerűen szerepelnek a \textit{setCellState} függvényhez tar
 	\item Az üressé tett, nem hivatkozott cella egyedüliként hivatkozik legalább egy üres cellára. Ekkor a hivatkozott üres cella is eltűnik a gráfból. (\textit{makeEmptyNoRef} teszteset)
 	\item Hivatkozott cella üressé tétele.
 	\item Cella módosításakor a cellát reprezentáló csúcsba bemenő és kimenő élek ellenőrzése (több tesztesetben is).
+\end{compactenum}
+
+\subsection{Test.Eval.CodeGeneration}
+
+Az \textit{Eval} komponensből csak az \textit{Eval.CodeGeneration} modulhoz készültek egységtesztek. 
+
+A parancssori parancsok parseolására szolgáló \textit{Eval.CommandLine} tesztelésére nincs szükség, mivel a referenciák feloldása már a \textit{Spreadsheet.Parser} modulban teszteltetett, az implementáció maradéka pedig egyszerű, az esetleges hibák pedig jól megtervezett felhasználói tesztekkel szűrhetől.
+
+Az \textit{Eval.Ghci} és \textit{Eval.EvalMain} modulok funkcionalitása a kiértékeléshez kapcsolódik. Az ezen két modulban definiált akciók helyesm működése szintén a felhasználói tesztekkel ellenőrizhető. (Csak a kiértékelés eredményét kell figyelni, és a háttérben futtatott folyamatokat monitorozni.)
+
+A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként exportált \textit{generateCode} függvény teszteltetett. A tesztesetek kézzel lettek előállítva az alábbi szempontok alapján: 
+
+\begin{compactenum}
+	\item Kódgenerálás értékhez, amelytől nem függ cella.
+	\item Elvégezhető kódgenerálás formulához, amelytől nem függ cella.
+	\item Elvégezhető kódgenerálás értékhez/formulához, amelytől függnek cellák. Különféle gráftípusok: egyenes, fa, általános irányítatlan körmentes gráf.
+	\item Cella hiányzó függőséggel (üres cella, nem cachelt formula).
+	\item Parsolási hibás cella.
 \end{compactenum}
 
 \subsection{Felhasználói tesztek}
