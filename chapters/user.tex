@@ -60,11 +60,13 @@ A formulákba lehetséges cellahivatkozásokat írni. Kétféle cellahivatkozás
 
 A cellahivatkozások nem kisbetű-nagybetű érzékenyek.
 
+Az alkalmazás egyelőre nem támogatja számformátum beállítását, ennek megfelelően a belső reprezentáció által biztosított maximális számú tizedesjegy jelenik meg.
+
 A formula összes többi része Haskell kódként kerül értelmezésre. A típushelyesség a kiértékelés során kerül ellenőrzésre.
 
 \subsection{A futásidejű reprezentáció}
 
-Egy cella futásidejű reprezentációja egy \textit{Maybe a} típusú érték. Az üres cella reprezentációja \textit{Nothing}, a nemüres cella reprezentációja \textit{Just val}, ahol \textit{val} a cellába beírt string/szám. A kiszámított értékek is mindig Just-ba wrappelődnek, hogy y a GHCi továbbszámolhasson velük. Az értékek visszaolvasásakor ez a háttérben egy \textit{fromJust} hívással unwrappelődik.
+Egy cella futásidejű reprezentációja egy \textit{Maybe a} típusú érték. Az üres cella reprezentációja \textit{Nothing}, a nemüres cella reprezentációja \textit{Just val}, ahol \textit{val} a cella értéke. A kiszámított értékek is mindig Just-ba csomagoltatnak, hogy a GHCi továbbszámolhasson velük. A valamely cella megváltozásának hatására kezdődő kiértékelési folyamat végrehajtása után az értékek visszaolvasásakor ez a háttérben egy \textit{fromJust} hívással kicsomagolódik, az értékek a cellákban Just nélkül jelennek meg.
 Egész szám esetén a kódgeneráló algoritmus figyel arra, hogy olyan literált generáljon a cellaértékből, ami értelmezhető egész típusúként (azaz ilyenkor levágja a tizedesrészt).
 
 A cellahivatkozások feloldását példákon keresztül mutatjuk be. Bal oldalt található a hivatkozás, jobb oldalt a generált kód.
@@ -74,17 +76,17 @@ A cellahivatkozások feloldását példákon keresztül mutatjuk be. Bal oldalt 
 	\item \textit{§a1:b0§} $\rightarrow$ \textit{[]}
 \end{compactenum}
 
-A cellahivatkozások feloldásakor a cellákhoz egy $\mathbb{N} \times \mathbb{N} \rightarrow \mathbb{N}$ bijekción keresztül egy azonosító kerül hozzárendelésre (innen származnak a kódban írt \textit{vi} változónevek. A függvény definíciója megtalálható a fejlesztői dokumentációban.
+A cellahivatkozások feloldásakor a cellákhoz egy $\mathbb{N} \times \mathbb{N} \rightarrow \mathbb{N}$ bijekción keresztül egy azonosító kerül hozzárendelésre (innen származnak a kódban írt \textit{vi} változónevek. A függvény definíciója megtalálható a fejlesztői dokumentációban. Listahivatkozás feloldásakor a hivatkozott téglalap elemei fentről lefelé és balról jobbra haladva, sorfolytonosan kerülnek a listába. Pl: §a2:c3§ esetén a lista elemeinek sorrendje: [a2,a3,b2,b3,c2,c3]
 
 A fentiek alapján \textit{a} típusú cellára mutató egyszerű hivatkozás ugyanúgy használható, mint egy \textit{a} típusú érték. Az üres cellára való egyszerű hivatkozás hibát okoz. Példák (beírt kód és generált kód):
 \begin{compactenum}
 	\item A0 kódja: \textit{"12.0"}, B1 kódja: \textit{"=§a0§+11"} $\rightarrow$ B1 értékét kiszámító Haskell kód: \textit{v3 = Just \$ fromJust (Just 12) + 11}
-	\item A0 kódja : \textit{""} B1 kódja: \textit{"=§a0§+11"} $\rightarrow$ B1 értékét kiszámító (hibát eredményező): \textit{v3 = Just \$ fromJust Nothing + 11}
+	\item A0 kódja : \textit{""} B1 kódja: \textit{"=§a0§+11"} $\rightarrow$ B1 értékét kiszámító (hibát eredményező) Haskell kód: \textit{v3 = Just \$ fromJust Nothing + 11}
 \end{compactenum}
 
 A listahivatkozások feloldásakor azonban a lista elemei \textit{Maybe a} típusúak maradnak. Példa:
 
-A0 kódja: \textit{"12"}, A1 kódja: \textit{"13"}, A2 kódja: \textit{=sum §a0:a10} $\rightarrow$ A2 értékét kiszámító (típushibás) Haskell kód: \textit{v5 = Just \$ sum [Just 12, Just 13]}
+A0 kódja: \textit{"12"}, A1 kódja: \textit{"13"}, A2 kódja: \textit{=sum §a0:a1§} $\rightarrow$ A2 értékét kiszámító (típushibás) Haskell kód: \textit{v5 = Just \$ sum [Just 12, Just 13]}
 
 Ez látszólag komoly problémákat eredményez, de az \textit{€} operátor (lásd 2.5.3) egy könnyen használható megoldást ad a problémára.
 
@@ -92,11 +94,15 @@ Ez látszólag komoly problémákat eredményez, de az \textit{€} operátor (l
 
 Egy cella kódjának megváltoztatása után előfordulhatnak hibák, az alábbiakban ezek foglaltatnak össze:
 \begin{compactenum}
-	\item Ha egy cella kódját nem sikerül parseolni, a cellában az "FNoParse" szöveg jelenik meg. Parseolási hiba csak formula esetén léphet fel, ha szerepel a kódban '§' karakter, de nem egy értelmes hivatkozás részeként. Példák: "=§a§", "=a1§". A Haskell szintaxis helyessége csak a kiértékelés során kerül elenőrzésre.
+	\item Ha egy cella kódját nem sikerül parseolni, a cellában az "FNoParse" szöveg jelenik meg. Parseolási hiba csak formula esetén léphet fel, ha szerepel a kódban '§' karakter, de nem egy értelmes hivatkozás részeként. Példák: "=§a§", "=a1§". Amennyiben a referenciák helyesek, de a Haskell kód mégsem értelmes, akkor az kiértékelési hibaként jelenik meg.
+	\item Ha a cella megváltoztatásával hivatkozási kör jönne létre a számolótáblában, a megváltoztatni kívánt cellában az "FCycleRefError" szöveg jelenik meg.
 	\item Ha a megváltoztatott cella olyan cellára hivatkozik, amely hibás (azaz nem nyerhető ki az értéke), akkor a cellában az "FNoCache" hibaüzenet jelenik meg. 
 	\item Ha a kiértékelés során hiba történt (Haskell szintaxishiba/típushiba/futásidejű hiba), akkor a cellában az és leszármazott celláiban az "FGhciError" hibaüzenet jelenik meg.
-	\item Ha a cella kiértékelése egy másodpercnél tovább tart, a kiértékelés leáll, és a cellában az "FTimeoutError" szöveg jelenik meg. A leszármazott cellákban az "FGhciError" szöveg jelenik meg. Megjegyzés: a végtelen GHCi számítások terminálása nem működik teljesen megbízhatóan, így a legjobb tudatosan elkerülni az ilyen számítások futtatását. (A probléma részletes leírása megtalálható a 3.3.5 szakaszban.)
+	\item Ha a cella kiértékelése egy másodpercnél tovább tartana, a kiértékelés leáll, és a cellában az "FTimeoutError" szöveg jelenik meg. A leszármazott cellákban az "FGhciError" szöveg jelenik meg. Megjegyzés: a végtelen GHCi számítások megszakítása nem működik teljesen megbízhatóan, így a legjobb tudatosan elkerülni az ilyen számítások futtatását. (A probléma részletes leírása megtalálható a 3.3.5 szakaszban.)
 \end{compactenum}
+	
+Megjegyzés: a hibaüzenetek az alkalmazás jelen verziójában nem tartalmaznak extra információt a fent leírtakhoz képest. 
+
 
 \section{A standard könyvtár}
 
@@ -149,9 +155,13 @@ Emellett természetesen tetszőleges Haskell modul betölthető az alkalmazásba
 
 \subsection{Kifejezés kiértékelése GHCi-ban}
 
-A program a cellák kódjának kiértékeléséhez a háttérben egy GHCi példányt futtat. Jelölje a $\_$ a szóköz karaktert és $C$ az összes karakterek halmazát. Amennyiben a beütött parancs $\_^+g\_^+C^*$ alakú, a "g"-t követő szóközök utáni részstring kiértékeltetik a GHCi-ban. A kiértékelés eredménye megjelenik log üzenetként. 
+A program a cellák kódjának kiértékeléséhez a háttérben egy GHCi példányt futtat. Lehetőség van kifejezések közvetlen kiértékelésére a GHCi-ben a \textit{g} parancs segítségével. A kiértékelés eredménye megjelenik log üzenetként. Példák:
+\begin{compactenum}
+	\item \textit{g sum [1..10] * 2}
+	\item \textit{g :t map}
+\end{compactenum}
 
-Ezen parancs segítségével lehetséges modulokat importálni és bindingokat létrehozni a GHCi által használt IO monádban. Azonban minden egyes cellakiértékelés előtt a bindingok elvesznek, a betöltött modulok pedig azok lesznek, amelyek a "Modules" menüpontban meg lettek adva. Így a gyakorlatban a GHCi ezen funkciói nem használhatók.
+Ezen parancs segítségével van elméleti lehetőség modulokat importálni és definíciókat megadani közvetlenül a GHCi-ban. Azonban minden egyes cellakiértékelés előtt a bindingok elvesznek, a betöltött modulok pedig azok lesznek, amelyek a "Modules" menüpontban meg lettek adva. Így a gyakorlatban a GHCi ezen funkciói nem használhatók.
 
 \subsection{Cellatartalom másolása és áthelyezése}
 
@@ -164,4 +174,4 @@ A listahivatkozás adja meg a másolandó/áthelyezendő tartományt (bal felső
 	\item \textit{cp §a0:a3§ §a1§}
 \end{compactenum}
 
-A parancsot lehet úgy paraméterezni, hogy a kiinduló és a céltartomány átfedésben legyen (fenti 3. példa). Ebben az esetben a parancs az új értékekkel felülírja a metszetben lévő cellákat. Ha pl. a harmadik példában \textit{§a0:a4§} rendre \textit{[1,2,3,4,ÜRES]}, akkor a parancs végrehajtása után \textit{[1,1,2,3,4]} lesz a cellák tartalma.
+A parancsot lehet úgy paraméterezni, hogy a kiinduló és a céltartomány átfedésben legyen (fenti 3. példa). Ebben az esetben a parancs az új értékekkel felülírja a metszetben lévő cellákat. Ha pl. a fenti 3. példában \textit{§a0:a4§} rendre \textit{[1,2,3,4,ÜRES]}, akkor a parancs végrehajtása után \textit{[1,1,2,3,4]} lesz a cellák tartalma.
