@@ -1,3 +1,19 @@
 \chapter{Összegzés} % Conclusion
 \label{ch:sum}
 
+\subsection{Ami megvalósult}
+
+Sikerült implementálni egy táblázatkezelő szoftver első verzióját. A szoftver architektúrája lehetővé teszi a későbbi bővítést, vagy az egyes komponensek lecserélését. 
+
+Az alkalmazásban közvetlenül használhatók Haskell nyelven megírt modulok. Ezek segítségével lehetséges számításokat végezni a bevitt szöveges és numerikus adatokon. A munkát támogatja néhány egyszerű parancs (cellablokkok mozgatása és másolása, GHCi utasítások közvetlen kiértékelése). 
+
+Lehetőség van számolótáblákat menteni és betölteni, az alkalmazás beállításai (GHCi-ba betöltendő modulok és keresési útvonalak) is automatikusan mentésre kerülnek az alkalmazás bezárásakor.
+
+Az alkalmazás felhasználói felülete ugyanakkor még kezdetleges, és további fejlesztésre szorul. A fő funkciók használhatók, de a használat körülményes, a szoftver jelenlegi verziójának gyakorlati használata nem életszerű.
+
+\subsection{Távlati tervek}
+
+A bevezetőben szerepelt az a gondolat, hogy a táblázatkezelő lényegében egy interfészt biztosít egy funkcionális nyelvhez. Ez azonban még csak korlátozottan valósul meg, mivel a cellákban csak numerikus és szöveges adatok tárolhatók. Ezt a későbbiekben célszerű lenne oly módon kiegészíteni, hogy a cellákban tetszőleges (akár \textit{Show} példánnyal nem rendelkező) típusú értéket lehessen tárolni. Emellett azt is meg lehetne valósítani, hogy a cellák értéke ténylegesen a háttérben futtatott GHCi példányban legyen tárolva, és ne csak az alkalmazás által használt gráfreprezentációban. Így az alkalmazás tényleg magához a GHCi-hoz lenne biztosítana egy interfészt, nem pedig csak a GHCi segítségével végezne számításokat.
+
+A felhasználói felülettel kapcsolatban számos funkció megvalósítása szükséges. Jelenleg teljesen hiányoznak a formátumra vonatkozó beállítások (pl. betűszín, cellák szélessége). Emellett hasznos lenne, ha a mozgatáshoz és másoláshoz lehetne használni az Excelben megszokott megoldást (cellablokk kijelölése és billentyűkombinációk használata). Lehetne támogatást implementálni ábrák megjelenítéséhez, kihasználva, hogy a Haskellben implementált grafikus csomagok mind elérhetők az alkalmazáson belül. Ezek mellett még egy fontos cél lehet a kódírás segítése hasznosabb hibaüzenetekkel, és egy többsoros, a Haskell nyelvhez igazított szövegszerkesztővel. 
+

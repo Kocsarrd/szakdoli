@@ -622,7 +622,7 @@ Az \textit{Eval} komponensből csak az \textit{Eval.CodeGeneration} modulhoz ké
 
 A parancssori parancsok parseolására szolgáló \textit{Eval.CommandLine} tesztelésére nincs szükség, mivel a referenciák feloldása már a \textit{Spreadsheet.Parser} modulban teszteltetett, az implementáció maradéka pedig egyszerű, az esetleges hibák pedig jól megtervezett felhasználói tesztekkel szűrhetől.
 
-Az \textit{Eval.Ghci} és \textit{Eval.EvalMain} modulok funkcionalitása a kiértékeléshez kapcsolódik. Az ezen két modulban definiált akciók helyesm működése szintén a felhasználói tesztekkel ellenőrizhető. (Csak a kiértékelés eredményét kell figyelni, és a háttérben futtatott folyamatokat monitorozni.)
+Az \textit{Eval.Ghci} és \textit{Eval.EvalMain} modulok funkcionalitása a kiértékeléshez kapcsolódik. Az ezen két modulban definiált akciók helyes működése szintén a felhasználói tesztekkel ellenőrizhető. (Csak a kiértékelés eredményét kell figyelni, és a háttérben futtatott folyamatokat monitorozni.)
 
 A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként exportált \textit{generateCode} függvény teszteltetett. A tesztesetek először felépítenek egy számolótáblát (\textit{setCellState} és \textit{cacheCell} segítségével), majd kódot generálnak a megadott cellákhoz, és az eredményt összehasonlítják az elvárt eredménnyel. A tesztesetek manuálisan lettek előállítva az alábbi szempontok alapján: 
 
@@ -720,3 +720,11 @@ A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként 
 		\item Új fájl megnyitásakor cella kijelölése előtt a kódszerkesztőbe írásnak nincs hatása.	
 	\end{itemize}		
 \end{compactenum}
+
+\subsection{A tesztelés tanulságai}
+
+A tesztelés segítségével számos apró hibát sikerült feltárni. Ezek többnyire elírásokból, vagy olyan szélsőséges esetekből adódtak, amelyekre nem gondoltam a tervezési fázis során. A 3.7.1-3.7.4 alfejezetekben leírt tesztelési szempontok alapján a program átment a teszteken, biztosítja az elvárt funkcionalitást.
+
+Az egységtesztelés során a legtöbb problémát az \textit{Eval.CodeGeneration} modul okozta. A jelenlegi implementáció bár működik a szélsőséges esetekre is, kissé kaotikus. Itt indokolt lehet a modul újratervezése. (Az újratervezés mögött más érvek is szólnak, erről részletesebben a szoftverrel kapcsolatos távlati terveket részletező 4.2 alfejezetben esik szó.)
+
+A felhasználói tesztek fő tanulsága, hogy a felület még nem kellően felhasználóbarát. Számos funkció hiányzik, ami kényelmesebbé tenné a felhasználó munkáját (pl. formázással kapcsolatos beállítások, beszédes hibaüzenetek). (Erről is részletesebben esik szó a 4.2 alfejezetben.) Ugyanakkor a megvalósított funkciók intuitívan használhatók, így egy jó alapot biztosítanak a későbbiekben megtervezendő, összetettebb felhasználói felülethez.
