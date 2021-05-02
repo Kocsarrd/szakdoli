@@ -442,9 +442,9 @@ Betölti a paraméterként kapott fájlból az adatot. Ha nem létezik a fájl, 
 
 A \textit{saveSheet} speciális esete. A kapott paramétert a \textit{moduleConfigFile} konstans által megadott fájlba menti.
 
-\subsubsection{loadModuleConfig :: IO EvalConfig}
+\subsubsection{loadModuleConfig :: IO (Maybe EvalConfig)}
 
-Betölti a modulkonfigurációs fájl tartalmát. Ha a fájl nem létezik, az IO akció üres konfigurációt eredményez: (\textit{EvalConfig [] []}).
+Betölti a modulkonfigurációs fájl tartalmát. Ha a fájl nem létezik, az akció eredménye \textit{Nothing}.
 
 \section{App}
 
@@ -456,7 +456,7 @@ Ez a modul definiálja a főprogramot (\textit{appMain :: IO () )}, amellyel egy
 A \textit{runApp} akció a következőképpen határozza meg a program működését:
 \begin{compactenum}
 	\item Hozzárendeli a GUI elemeihez az eseménykezelőket (\textit{App.Setup.setupGui}).
-	\item Betölti a beállított keresési útvonalakat és modulokat a GHCi-be (\textit{Eval.Ghci.loadModules}).
+	\item Betölti a beállított keresési útvonalakat és modulokat a GHCi-be (\textit{Eval.Ghci.loadModules}). Ha nem található a konfigurációs fájl, egy figyelmeztetést ír a standard kimenetre.
 	\item Beállítja, hogy az alkalmazás bezárásakor álljon le a GHCi és a modulok konfigurációja kerüljön mentésre.
 	\item Megjeleníti a GUI-t és elindítja a main loopot. 
 \end{compactenum}
@@ -501,9 +501,14 @@ Tehát a eseménykezelőt hozzárendelő függvény lekérdezi a globális álla
 
 Ez a modul olyan akciókat definiál, melyeket az \textit{App.Setup} további almoduljai felhasználhatnak. Az alább leírtak mellett a modul exportál néhány, a globális állapot egyes komponenseinek lekérdezését kényelmesebbé tevő akciót is.
 
-\subsubsection{setTitle :: String -> ReaderT Env IO ()}
+\subsubsection{setTitle :: ReaderT Env IO ()}
 
-Az ablak címét a megadott \textit{String}-re állítja.
+Ez az akció állítja be az ablak címét a globális állapot \textit{file} mezője alapján:
+\begin{compactenum}
+	\item Ha a \textit{file} változó tartalma \textit{Nothing}, az ablak címe "*new file".
+	\item Ha a \textit{file} változó tartalma \textit{Just fname} és a fájl állapota \textit{Modified}, akkor az ablak címe "*<fname>".
+	\item Ha a \textit{file} változó tartalma \textit{Just fname} és a fájl állapota \textit{Saved}, akkor az ablak címe "<fname>".
+\end{compactenum}
 
 \subsubsection{logAppendText :: String -> ReaderT Env IO ()}
 
@@ -511,7 +516,7 @@ A paraméterként kapott \textit{String}-et új sorként hozzáadja a log aljáh
 
 \subsubsection{updateView :: ReaderT Env IO ()}
 
-A globális állapot \textit{state} mezője alapján frissíti a cellákban megjelenő szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt.
+A globális állapot \textit{state} mezője alapján frissíti a cellákban megjelenő szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt. A táblanézet frissítése után az ablak címét is frissíti a \textit{setTitle} akció segítségével.
 
 \subsubsection{evalAndSet :: CellID -> ReaderT Env IO}
 
@@ -557,31 +562,9 @@ A fókusz megszerzésekor amennyiben volt kijelölt cella, úgy annak a legutób
 
 A modul eseménykezelőket rendel a menüsor gombjainak (\textit{Button}) \textit{onClicked} eseményéhez.
 
-\subsubsection{runAreYouSureDialog :: IO Bool}
+A funkciók megvalósítása dialógusok segítségével történik (\textit{FileChooserDialog} és \textit{Dialog}). A "Modules" és "Search paths" gombokhoz egy közös akció tartozik, ami paraméterezhető a változtatandó beállítással (\textit{ModuleActionType}). 
 
-Ez a segédakció egy felugró ablak segítségével visszaad egy igen-nem választ ("biztos-e ebben" dialógus). Több handler is használja, amikor fennálna a lehetőség, hogy a végrahajtandó akció végrehajtása során elvesznének nem mentett információk.
-
-\subsubsection{getFileChooserDialog :: FileChooserAction -> IO FileChooserDialog}
-
-Ez a segédakció hozza létre a mentéshez és betöltéshez szükséges dialógusokat. A kapott paramétertől függ, hogy mentéshez vagy betöltéshez szükséges dialógus jön létre.
-
-\subsubsection{newAction :: ReaderT Env IO ()}
-
-A "New" gomb megnyomásakor az alábbiak történnek:
-\begin{compactenum}
-	\item Felugrik a "biztos-e ebben" dialógus.
-	\item Nemleges válasz esetén nem történik semmi.
-	\item Igenlő válasz esetén a globális állapot \textit{state} mezőjébe egy üres számolótábla kerül. A \textit{file} mező értéke \textit{Nothing} lesz. Az ablak címe "*new file" lesz.
-	\item Frissül a nézet
-\end{compactenum}
-
-\subsubsection{loadAction :: ReaderT Env IO ()}
-
-A "Load" gomb megnyomásakor az alábbiak történnek:
-\begin{compactenum}
-	\item Megjelenik a betöltéshez szolgáló fájlválasztó dialógus.
-	\item Amennyiben a felhasználó a "Load" gombra kattintott, és megadott egy fájlnevet.
-\end{compactenum}
+A modul definiál egy \textit{runAreYouSureDialog} segédakciót, amely egy felugró ablak segítségével kér a felhasználótól egy igen-nem választ ("biztos-e ebben" dialógus). Több eseménykezelő is használja azon esetekben, amikor fennálna a lehetőség, hogy a végrehajtandó akció végrehajtása során elvesznének nem mentett információk.
 
 \subsection{App.Setup.Table}
 
@@ -641,13 +624,15 @@ A parancssori parancsok parseolására szolgáló \textit{Eval.CommandLine} tesz
 
 Az \textit{Eval.Ghci} és \textit{Eval.EvalMain} modulok funkcionalitása a kiértékeléshez kapcsolódik. Az ezen két modulban definiált akciók helyesm működése szintén a felhasználói tesztekkel ellenőrizhető. (Csak a kiértékelés eredményét kell figyelni, és a háttérben futtatott folyamatokat monitorozni.)
 
-A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként exportált \textit{generateCode} függvény teszteltetett. A tesztesetek kézzel lettek előállítva az alábbi szempontok alapján: 
+A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként exportált \textit{generateCode} függvény teszteltetett. A tesztesetek először felépítenek egy számolótáblát (\textit{setCellState} és \textit{cacheCell} segítségével), majd kódot generálnak a megadott cellákhoz, és az eredményt összehasonlítják az elvárt eredménnyel. A tesztesetek manuálisan lettek előállítva az alábbi szempontok alapján: 
 
 \begin{compactenum}
 	\item Kódgenerálás értékhez, amelytől nem függ cella.
 	\item Elvégezhető kódgenerálás formulához, amelytől nem függ cella.
-	\item Elvégezhető kódgenerálás értékhez/formulához, amelytől függnek cellák. Különféle gráftípusok: egyenes, fa, általános irányítatlan körmentes gráf.
-	\item Cella hiányzó függőséggel (üres cella, nem cachelt formula).
+	\item Elvégezhető kódgenerálás értékhez/formulához, amelytől függnek cellák. Különféle gráftípusok: egyenes, fa	, általános irányítatlan körmentes gráf. A formulának lehet külső, formula függősége (ekkor a teszteset felépítésekor azt cachelni kell.)
+	\item Egyszerű- és listahivatkozások.
+	\item Üres cellára is hivatkozó formula.
+	\item Cella hiányzó függőséggel (nem cachelt formula).
 	\item Parsolási hibás cella.
 \end{compactenum}
 
