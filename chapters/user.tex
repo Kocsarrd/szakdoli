@@ -64,6 +64,8 @@ Az alkalmazás egyelőre nem támogatja számformátum beállítását, ennek me
 
 A formula összes többi része Haskell kódként kerül értelmezésre. A típushelyesség a kiértékelés során kerül ellenőrzésre.
 
+Megjegyzés: A cellákba csak numerikus és szöveges adat írható és számítható. Amennyiben a megadott formula más típusú, úgy \textit{Show} példánnyal rendelkező típusok esetén az érték \textit{String} reprezentációja lesz a számítás eredménye, ellenkező esetben pedig hiba lép fel. Pl. az "=[1..5]" formula az "[1,2,3,4,5]" string-re értékelődik ki, az "=\textbackslash x -> x" kifejezés eredménye hiba.
+
 \subsection{A futásidejű reprezentáció}
 
 Egy cella futásidejű reprezentációja egy \textit{Maybe a} típusú érték. Az üres cella reprezentációja \textit{Nothing}, a nemüres cella reprezentációja \textit{Just val}, ahol \textit{val} a cella értéke. A kiszámított értékek is mindig Just-ba csomagoltatnak, hogy a GHCi továbbszámolhasson velük. A valamely cella megváltozásának hatására kezdődő kiértékelési folyamat végrehajtása után az értékek visszaolvasásakor ez a háttérben egy \textit{fromJust} hívással kicsomagolódik, az értékek a cellákban Just nélkül jelennek meg.
