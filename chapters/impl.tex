@@ -417,13 +417,15 @@ A modul feladata a felhasználó által a parancssorba beütött parancsok repre
 \lstset{caption={A \textit{ClCommand} típus}, label=src:clcommand}
 \begin{lstlisting}[language={Haskell}]
 data ClCommand = ClGhci String
-               | ClMv [(CellID, CellID)]
-               | ClCp [(CellID, CellID)]
+               | ClMv ((Int,Int),[(CellID, CellID)])
+               | ClCp ((Int,Int),[(CellID, CellID)])
 \end{lstlisting}
 
-A \textit{ClGhci} konstruktorral létrehozott parancs a GHCi-ban értékelendő ki. A másik két konstruktor az \textit{mv} és \textit{cp} parancsokhoz szolgál. Ezen konstruktorok paramétere forrás-cél cellaazonosító-párok listája. A parancsok parseolása megfelel a felhasználói dokumentációban leírtaknak. A referenciák feloldása a \textit{Spreadsheet.Parser} dokumentációjában leírtak szerint történik.
+A \textit{ClGhci} konstruktorral létrehozott parancs a GHCi-ban értékelendő ki. A másik két konstruktor az \textit{mv} és \textit{cp} parancsokhoz szolgál. Ezen konstruktorok második paramétere a forrás-cél cellaazonosító-párok listája, az első paraméter pedig ezen azonosítópárok koordinátánkénti távolsága. A parancsok parseolása megfelel a felhasználói dokumentációban leírtaknak. A referenciák feloldása a \textit{Spreadsheet.Parser} dokumentációjában leírtak szerint történik.
 
 A modul exportálja a \textit{parseCommand :: String -> Maybe ClCommand} függvényt, amely a fent leírtaknak megfelelően elvégzi a parseolást. Hiba esetén az eredmény \textit{Nothing}, sikeres parseolás esetén pedig \textit{Just}.
+
+A modul emellett exportálja a \mbox{\textit{shiftCode :: (Int,Int) -> String -> String}} függvényt, amely egy cella (feltételezetten helyesen parseolható) kódját (\textit{String} paraméter) "eltolja" az \textit{(Int,Int)} paraméter által megadott vektorral (oszlop eltolás, sor eltolás). Ez azt jelenti, hogy az összes relatív hivatkozást módosítja, az abszolút hivatkozásokat azonban helybenhagyja.
 
 \section{Persistence}
 
@@ -541,7 +543,7 @@ A modul a parancssor (\textit{Entry}) \textit{onEntryActivate} eseményéhez (en
 \begin{compactenum}
 	\item A parancssorban lévő szöveg parancsként parseoltatik.
 	\item Ha GHCi parancsként értelmezhető (a parseolás eredménye \textit{ClGhci cmd}), akkor végrehajtatik a GHCi parancs, és az eredmény logolásra kerül.
-	\item Ha \textit{cp} vagy \textit{mv} parancsként értelmezhető (\textit{ClCp ls} vagy \textit{ClMv ls}), akkor a kapott cellaazonosító-párok alapján végrehajtódik a másolás/mozgatás.
+	\item Ha \textit{cp} vagy \textit{mv} parancsként értelmezhető (\textit{ClCp ls} vagy \textit{ClMv ls}), akkor a kapott cellaazonosító-párok alapján végrehajtódik a másolás/mozgatás. Az akció a kapott lista szerinti sorrendben hajtódik végre. Először lekérdeztetik a forráscella kódja, majd a relatív hivatkozások eltolásra kerülnek az \textit{Eval.CommandLine.shiftCode} függvénnyel, végül a célcella állapota ez az "eltolt kód" lesz. Az összes akció végrehajtása után frissül a nézet.
 	\item Ismeretlen parancs esetén logolásra kerül a hiba.
 	\item A parancsorból eltűnik a szöveg.
 \end{compactenum}

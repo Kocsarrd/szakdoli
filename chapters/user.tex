@@ -52,17 +52,19 @@ A fentiek megléte esetén a program az alábbi paranccsal fordítható:
 Egy cella tartalma négyféle lehet: üres cella, szám, szöveg vagy formula. A cellába beírt kifejezés pontosan akkor formula, ha az első (nem szóköz) karaktere "=". Amennyiben az első (nem szóköz) karakter nem "=", és a beírt szöveg értelmezhető tizedestörtként, annyiban a cella tartalma számként kerül értelmezésre. Minden más esetben a cella tartalma egy string. Példák:
 \begin{compactenum}
 	\item Szám: "0.12", "-11", "-12.", ".123"
-	\item Formula: " =sum [1..10]", "= §a0§+sumD §a2:b4§"
+	\item Formula: " =sum [1..10]", "= §\$a\$0§+sumD §a2:b4§"
 	\item String: "alma", ".12aa"
 \end{compactenum}
 
 A formulákba lehetséges cellahivatkozásokat írni. Kétféle cellahivatkozás létezik:
 \begin{compactenum}
-	\item Egyszerű hivatkozás. Pl: §a0§,§B1§.
-	\item Listahivatkozás. Pl: §a0:B4§.
+	\item Egyszerű hivatkozás. Pl: §a0§,§B\$1§, §\$c\$20§, §\$B10§
+	\item Listahivatkozás. Pl: §a0:B4§, §c\$2:c\$10§, §\$a0:b\$10§
 \end{compactenum}
 
 A cellahivatkozások nem kisbetű-nagybetű érzékenyek.
+
+A hivatkozásokban található \textit{\$} karakter minden hivatkozás (listahivatkozás esetén mindkét határ) oszlop- és sorneve elé is beszúrható. A \textit{\$} jelnek cellák másolásakor és mozgatásakor van szerepe (részletesebben lásd 2.6.2).
 
 Az alkalmazás egyelőre nem támogatja számformátum beállítását, ennek megfelelően a belső reprezentáció által biztosított maximális számú tizedesjegy jelenik meg.
 
@@ -180,4 +182,11 @@ A listahivatkozás adja meg a másolandó/áthelyezendő tartományt (bal felső
 	\item \textit{cp §a0:a3§ §a1§}
 \end{compactenum}
 
+Cellák másolásakor a cellák kódjában található hivatkozások alapértelmezetten relatív hivatkozásként kerülnek értelmezésre. A hivatkozásokban \textit{\$}-ral lehet jelölni azokat az oszlop- és sorazonosítókat, melyeket abszolút hivatkozásként szeretnénk kezelni.
+
+Példa:
+Legyen \textit{C0} kódja \textit{=sumD §a0:b5§ + §\$C\$5§}. Ekkor a \textit{c0} cellát {d1}-be másolva, a \textit{d1} cella kódja \textit{=sumD §b1:c6§ + §\$C\$5§}
+
 A parancsot lehet úgy paraméterezni, hogy a kiinduló és a céltartomány átfedésben legyen (fenti 3. példa). Ebben az esetben a parancs az új értékekkel felülírja a metszetben lévő cellákat. Ha pl. a fenti 3. példában \textit{§a0:a4§} rendre \textit{[1,2,3,4,ÜRES]}, akkor a parancs végrehajtása után \textit{[1,1,2,3,4]} lesz a cellák tartalma.
+
+Megjegyzés: a parsolási hibás cellák másolása/mozgatása során nem garantált, hogy a célcella kódja megegyezik a forráséval. A hiba elkerülésének érdekében azt javaslom a felhasználónak, hogy sokszorosítás helyett inkább javítsa ki a hibát. 
