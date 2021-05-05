@@ -72,19 +72,20 @@ data Menubar = Menubar { newButton :: Button
                        , modulesButton :: Button
                        , pathsButton :: Button }
 
-data Gui = Gui { mainWindow  :: Window
-               , logWindow   :: ScrolledWindow
-               , log         :: TextBuffer
-               , table       :: Table
-               , entryKeys   :: [(Entry,(Int,Int))]
-               , editor      :: Entry
-               , commandLine :: Entry
-               , menu        :: Menubar }
+data Gui = Gui { mainWindow     :: Window
+               , logWindow      :: ScrolledWindow
+               , log            :: TextBuffer
+               , table          :: Table
+               , entryKeys      :: [(Entry,(Int,Int))]
+               , colButtonKeys  :: [(Button, Char)]
+               , editor         :: Entry
+               , commandLine    :: Entry
+               , menu           :: Menubar }
 \end{lstlisting}
 
 A \textit{Gui} típus tartalmazza a Gui azon komponenseit, amelyekre szükség van az eseménykezelők hozzáadásakor. A \textit{mainWindow} komponens tartalmazza az alkalmazás fő ablakát. 
 
-A számolótábla megjelenítése egy \textit{Table} segítségével történik. A cellákat a \textit{Table}-ben elhelyezett \textit{Entry}-k reprezentálják. Minden \textit{Entry}-hez egy \textit{(Int,Int)} kulcs is eltároltatik. Ez mutatja, hogy a tábla melyik pozíciójához tartozik az adott \textit{Entry}. Ez egy objektumorientált nyelvben megoldható lenne egy leszármazott widgettel (amelynek van egy extra mezője), azonban a \textit{gtk2hs} keretein belül ezt körülményes lett volna megoldani, így inkább ezt a megoldást választottam. Az \textit{Entry}-kulcs párokat az \textit{entryKeys} mező tartalmazza.
+A számolótábla megjelenítése egy \textit{Table} segítségével történik. A cellákat a \textit{Table}-ben elhelyezett \textit{Entry}-k reprezentálják. Minden \textit{Entry}-hez egy \textit{(Int,Int)} kulcs is eltároltatik. Ez mutatja, hogy a tábla melyik pozíciójához tartozik az adott \textit{Entry}. Ez egy objektumorientált nyelvben megoldható lenne egy leszármazott widgettel (amelynek van egy extra mezője), azonban a \textit{gtk2hs} keretein belül ezt körülményes lett volna megoldani, így inkább ezt a megoldást választottam. Az \textit{Entry}-kulcs párokat az \textit{entryKeys} mező tartalmazza. Az oszlopok tetején levő gombokat a \textit{colButtonKeys} mező tartalmazza. Ebben a mezőben az is el van tárolva, hogy melyik gombhoz melyik oszlop tartozik.
 
 A grafikus felület alján található log egy \textit{ScrolledWindow}-ban elhelyezkedő \textit{TextView}. Magára a \textit{TextView}-ra nincs szükség, csak az általa használt \textit{TextBuffer}-re, ezért azt nem is tartalmazza a \textit{Gui}. Az editor és a parancssor egy-egy \textit{Entry}-vel vannak implementálva. A \textit{menu} komponens tartalmazza felső menüsoron elérhető gombokat. 
 
@@ -568,12 +569,14 @@ A modul definiál egy \textit{runAreYouSureDialog} segédakciót, amely egy felu
 
 \subsection{App.Setup.Table}
 
-A modul eseménykezelőket rendel a cellák megjelenítésére szolgáló \textit{Entry}-k \textit{onFocusIn}, \textit{onFocusOut} és \textit{onEntryActivate} eseményeihez.
+A modul eseménykezelőket rendel a cellák megjelenítésére szolgáló \textit{Entry}-k \textit{onFocusIn}, \textit{onFocusOut} és \textit{onEntryActivate} eseményeihez, valamint az oszlopok tetején található gombok \textit{onClicked} eseményéhez.
 
-A fókusz megszerzésekor a kiválasztott cella értéke beállításra kerül, 
-és az editorban megjelenik a kiválasztott cellába legutóbb beütött kód.
+Ha egy cella megszerzi a fókuszt, az editorban megjelenik a kiválasztott cellába legutóbb beütött kód. Emellett az állapotban beállításra kerül az aktuálisan kijelölt cella. (\textit{Spreadsheet.Interface.setSelected}).
 
 A fókusz elvesztésekor/enter leütésekor ugyanaz történik, mint az editor esetén.
+
+Az oszlopok tetején levő gombokra kattintva lehet állítani a megfelelő oszlop szélességét. Ehhez a gombra kattintva létrejön egy \textit{Dialog}, amiben egy \textit{SpinButton} található. A \textit{SpinButton}-ben található érték a dialógus létrehozásakor az oszlop celláinak jelenlegi szélessége. Miután lefut a dialógus, a \textit{SpinButton}-ben megadott érték lesz az oszlop celláinak új szélessége.
+
 \section{Tesztelés}
 
 \subsection{A tesztelés folyamata}
