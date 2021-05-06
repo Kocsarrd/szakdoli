@@ -4,13 +4,15 @@
 Ha indokolni szeretnénk egy új táblázatkezelő szoftver elkészítésének létjogosultságát, két kérdésre kell választ adnunk:
 \begin{compactenum}
 	\item Milyen funkciókat kell ellátnia egy táblázatkezelő szoftvernek?
-	\item Mi az, ami hiányzik a jelenleg elterjedt szoftverekből? (Pl. Microsoft Excel)
+	\item Mi az, ami hiányzik a jelenleg elterjedt szoftverekből? (Pl. Microsoft Excel \cite{excel})
 \end{compactenum}
 
 Az első kérdésre talán az a legegyszerűbb válasz, hogy egy táblázatkezelő lehetőséget ad adatok tárolására és a bevitt adataink alapján újabb adatok kiszámítására. Ez a valóságban számtalan alkalmazási lehetőséget jelent. Az Excel-lel például lehet színes, táblázatos formájú órarendet készíteni, egy gyakorlati csoport eredményeit számontartani, családi költségvetést vezetni, stb. 
 
 Egy táblázatkezelőben minden cella tartalma egy funkcionális program. Egy cellába írhatunk egy egyszerű kifejezést (adat), vagy egy összetettebb programot, ami korábbi adatok függvényében számít ki egy új adatot. A táblázatkezelő tehát nem más, mint egy könnyen használható interfész a háttérben meghúzódó funkcionális nyelvhez. Ennek a nyelvnek az intuitív használatát számos funkció segíti. Lehetővé válik az összetett program komponensekre bontása, és az egyes komponensek eredményeinek hatékony vizualiuációja.
 
-Ha tekintjük napjaink legnépszerűbb táblázatkezelő szoftverét, az Excel-t, azt láthatjuk, hogy a fent leírt feladatot kiválóan ellátja. Bővelkedik megjelenítéssel kapcsolatos opciókban, a felhasználói felület használata intuitív, az elérhető dokumentáció közérthető. Fő hiányosságát nem is ebben látom, hanem az általa használt programozási nyelvben. Az Excel-ben a szoftver saját programozási nyelvét használhatjuk, az eszköztár bővítésére viszont a beágyazott VBA programnyelv használatával van lehetőség. Így az összetettebb, egyedi funkciók megvalósításához egyszerre két programozási nyelvet kell használni, sőt két programozási paradigmát is: a cellákba funkcionális kód kerül, a VBA viszont csak korlátozottan támogatja a funkcionális paradigmát. 
+Ha tekintjük napjaink legnépszerűbb táblázatkezelő szoftverét, az Excel-t, azt láthatjuk, hogy a fent leírt feladatot kiválóan ellátja. Bővelkedik megjelenítéssel kapcsolatos opciókban, a felhasználói felület használata intuitív, az elérhető dokumentáció közérthető. Fő hiányosságát nem is ebben látom, hanem az általa használt programozási nyelvben. Az Excel-ben a szoftver saját programozási nyelvét használhatjuk, az eszköztár bővítésére viszont a beágyazott VBA \cite{vba_excel} programnyelv használatával van lehetőség. Így az összetettebb, egyedi funkciók megvalósításához egyszerre két programozási nyelvet kell használni, sőt két programozási paradigmát is: a cellákba funkcionális kód kerül, a VBA viszont csak korlátozottan támogatja a funkcionális paradigmát. 
 
-Ezen probléma megoldására teszek kísérletet dolgozatomban. Egy olyan táblázatkezelő szoftvert készítettem el, aminek a celláiba -- a táblázatkezelői funkciók megfelelő ellátása érdekében kissé kiegészített -- Haskell nyelven lehet programokat írni. Így közvetlenül a felhasználó rendelkezésére áll egy általános célú, tisztán funkcionális programnyelv teljes eszköztára. 
+Ezen probléma megoldására teszek kísérletet dolgozatomban. Egy olyan táblázatkezelő szoftvert készítettem el, aminek a celláiba -- a táblázatkezelői funkciók megfelelő ellátása érdekében kissé kiegészített -- Haskell \cite{haskell_report} nyelven lehet programokat írni. Így közvetlenül a felhasználó rendelkezésére áll egy általános célú, tisztán funkcionális programnyelv teljes eszköztára.
+
+A dokumentáció elkészítéséhez Cserép Máté LaTeX sablonját \cite{mcserep} használtam. 	
