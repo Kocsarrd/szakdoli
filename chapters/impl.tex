@@ -138,7 +138,25 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 
 Az alkalmazáshoz emellett hozzátartozik az \textbf{Empty} modul, ami az alkalmazás standard könyvtára. Ez a modul nem része az alkalmazásnak (abban az értelemben, hogy egyik fordítási egység sem hivatkozik a modul tartalmára), de a háttérben futó GHCi folyamatban mindig elérhetők a modul által exportált függvények. Az \textbf{Empty} modulról bővebben a \textbf{2.5} szakaszban esik szó.
 
+A modulok közti függőségek a 3.1 ábrán láthatók. Az egyes komponensek eltérő színnel vannak jelölve. \textit{A} modul importálja \textit{B} modult, ha szerepel $A \rightarrow B$ nyíl az ábrán. 
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{ApplicationStructure}
+	\caption{A modulok közti függőségek}
+	\label{fig:appstructure}
+\end{figure}
+
 \section{Spreadsheet}
+
+\subsection{Áttekintés}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{Spreadsheet}
+	\caption{A Spreadsheet komponens moduljainak kapcsolata és interfésze}
+	\label{fig:appstructure}
+\end{figure}
 
 \subsection{Spreadsheet.Types}
 
@@ -256,29 +274,29 @@ A cellahivatkozások feloldásához kihasználjuk, hogy a karakterek injektíven
 
 \subsection{Spreadsheet.Interface}
 
-Ebben a modulban szerepelnek az \textit{App} komponens számára elérhető, a \textit{Spreadsheet} típushoz kapcsolódó függvények. A 3.2 táblázatban szerepel a modul által exportált függvények és azok feladatainak listája.
+Ebben a modulban szerepelnek az \textit{App} komponens számára elérhető, a \textit{Spreadsheet} típushoz kapcsolódó függvények. A 3.2 táblázatban szerepel a modul által exportált függvények feladatainak listája.
 
 \begin{table}
 	\centering
 	\begin{tabularx}{\textwidth}{ |l|X|X|}
 		\hline
-		Függvény & Típus & Feladat \\
+		Függvény  & Feladat \\
 		\hline\hline
-		emptySpreadsheet & Spreadsheet & üres számolótábla (0 csúcsú gráf, nincs kijelölt cella, nincs log üzenet) \\
+		emptySpreadsheet &  üres számolótábla (0 csúcsú gráf, nincs kijelölt cella, nincs log üzenet) \\
 		\hline
-		getCellText & CellID -> Spreadsheet -> String & egy cellában megjelenítendő szöveg lekérdezése \\
+		getCellText & egy cellában megjelenítendő szöveg lekérdezése \\
 		\hline
-		getCellCode & getCellCode :: CellID -> Spreadsheet -> String & egy adott cellába legutóbb beírt kód lekérdezése \\
+		getCellCode & egy adott cellába legutóbb beírt kód lekérdezése \\
 		\hline
-		setCellState & CellID -> String -> Spreadsheet -> Spreadsheet & a megadott cella állapotának módosítása egy a felhasználó által megadott String alapján \\
+		setCellState & a megadott cella állapotának módosítása egy a felhasználó által megadott String alapján \\
 		\hline
-		cacheCell & CellID -> Either EvalError String -> Spreadsheet -> Spreadsheet & kiértékelés eredményének cachelése \\
+		cacheCell & kiértékelés eredményének cachelése \\
 		\hline
-		getSelected & Spreadsheet -> Maybe CellID & kijelölt cella azonosítója \\
+		getSelected & kijelölt cella azonosítója \\
 		\hline
-		setSelected & CellID -> Spreadsheet -> Spreadsheet & kijelölt cella azonosítójának beállítása \\
+		setSelected & kijelölt cella azonosítójának beállítása \\
 		\hline 
-		getLogMessage & Spreadsheet -> String & legutóbbi log üzenet lekérdezése \\
+		getLogMessage & legutóbbi log üzenet lekérdezése \\
 		\hline
 	\end{tabularx}
 	\caption[A \textit{Spreadsheet.Interface} által exportált függvények]{A \textit{Spreadsheet.Interface} által exportált függvények}
@@ -311,6 +329,15 @@ A függvény feladata, hogy a megadott cellaazonosítóhoz tartozó csúcsban l�
 \end{compactenum}
 
 \section{Eval}
+
+\subsection{Áttekintés}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{Eval}
+	\caption{Az \textit{Eval} komponens moduljainak kapcsolata és interfésze}
+	\label{fig:appstructure}
+\end{figure}
 
 \subsection{Eval.CodeGeneration}
 
@@ -384,21 +411,6 @@ Megjegyzés: a fent leírt információk két StackOverflow diskurzusból \cite{
 
 A modul fő feladata, hogy kiértékeljen egy GHCi parancsot, és az eredményt értelmezze. Emellett lehetőséget biztosít a modulok és keresési útvonalak újratöltésére a globális konfiguráció alapján (\textit{EvalConfig}).
 
-\begin{table}
-	\centering
-	\begin{tabularx}{\textwidth}{ |X|X|}
-		\hline
-		Függvény & Típus \\
-		\hline\hline
-		execGhciCommand & String -> ReaderT EvalControl IO (Either EvalError String) \\
-		\hline
-		loadModules & ReaderT EvalControl IO () \\
-		\hline
-	\end{tabularx}
-	\caption[Az \textit{Eval.Ghci} által exportált függvények]{Az \textit{Eval.Ghci} által exportált függvények}
-	\label{tab:interface}
-\end{table}
-
 A kiértékelés folyamata a (nem exportált) \textit{execG} függvényben van leírva, és az alábbi módon zajlik:
 \begin{compactenum}
 	\item A paraméterként kapott parancs a \textit{eCommand} változóba kerül.
@@ -439,6 +451,14 @@ A modul emellett exportálja a \mbox{\textit{shiftCode :: (Int,Int) -> String ->
 
 \section{Persistence}
 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{Persistence}
+	\caption{Az \textit{Persistence} komponens interfésze}
+	\label{fig:appstructure}
+\end{figure}
+
+
 A modul feladata, hogy fájlokat mentsen és betöltsön. Egy adatot akkor lehet elmenteni, ha az adat típusa példánya a \textit{Serialize} típusosztálynak. Ezt a típusosztályt a \textit{cereal} csomag biztosítja. Egy \textit{Serialize} példány minden eleme bytestring-gé szerializálható. A program a számolótáblák és a konfigurációs fájlok perzisztálásához is bytestring formátumot használ.
 
 Jelenleg a program egy konfigurációs fájlt használ, ennek nevét a \textit{moduleConfigFile} konstans definiálja. Az alkalmazás bezárásakor ebbe a fájlba kerül mentésre a globális állapot \textit{evalControl} mezőjének \textit{eConfig} mezője.
@@ -460,6 +480,15 @@ A \textit{saveSheet} speciális esete. A kapott paramétert a \textit{moduleConf
 Betölti a modulkonfigurációs fájl tartalmát. Ha a fájl nem létezik, az akció eredménye \textit{Nothing}.
 
 \section{App}
+
+\subsection{Áttekintés}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{App}
+	\caption{Az \textit{App} komponens moduljainak kapcsolata és interfésze}
+	\label{fig:appstructure}
+\end{figure}
 
 \subsection{App.RunApp}
 
