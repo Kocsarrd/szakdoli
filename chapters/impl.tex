@@ -5,9 +5,9 @@
 
 A 3.2 részben ismertetésre kerülnek a szoftver készítése során felhasznált technológiák, valamint nagy vonalakban a szoftver logikai felépítése. (Milyen programkomponensek vannak, milyen feladatokat látnak el, hogyan kapcsolódnak egymáshoz.) 
 
-A 3.3-3.6 részek tartalmazzák az egyes komponensek részletesebb leírását. Minden komponens esetén ismertetésre kerül a más komponensek felé nyilvánosságra hozott interfész, valamint a komponensek működési elve, beleértve a használt típusok leírását és a fontosabb algoritmusok működési elvét. A rész sorrendileg úgy van felépítve, hogy először szerepelnek a vezérlő komponens (\textit{App}) által használt komponensek leírásai, majd ezt követően az \textit{App} moduljai. Így "lentről fölfelé" haladva először meg lehet érteni az egyes kisebb részek működését, majd azok segítségével az egész alkalmazásét.
+A 3.3-3.7 részek tartalmazzák az egyes komponensek részletesebb leírását. Minden komponens esetén ismertetésre kerül a más komponensek felé nyilvánosságra hozott interfész, valamint a komponensek működési elve, beleértve a használt típusok leírását és a fontosabb algoritmusok működési elvét. A rész sorrendileg úgy van felépítve, hogy először szerepelnek a vezérlő komponens (\textit{App}) által használt komponensek leírásai, majd ezt követően az \textit{App} moduljai. Így "lentről fölfelé" haladva először meg lehet érteni az egyes kisebb részek működését, majd azok segítségével az egész alkalmazásét.
 
-A 3.7 rész tartalmazza a tesztelési eljárás leírását és a tesztelés eredményeit. 
+A 3.8 rész tartalmazza a tesztelési eljárás leírását és a tesztelés eredményeit. 
 
 \section{A szoftver felépítése}
 
@@ -15,7 +15,7 @@ A 3.7 rész tartalmazza a tesztelési eljárás leírását és a tesztelés ere
 
 Az alkalmazás Haskell nyelven íródott. A grafikus megjelenítés \textit{GTK+} alapú, a \textit{gtk2hs} csomag által biztosított bindingokat használtam a grafikus felület kezeléséhez. Ez a csomag a \textit{GTK+} osztályhierarchiáját Haskell típusosztályok hierarchiájaként reprezentálja. Az egyes osztályok metódusainak a típusosztályok definíciójában szereplő függvények felelnek meg. A \textit{GTK+} típusai foreign pointerek segítségével vannak megvalósítva, és \textit{IO}-ban használhatók. 
 
-Az alkalmazás a \textit{GTK+} logikájának megfelelően eseményvezérelt. A felhasználó akciói eseményeket váltanak ki, amelyek hatására esenénykezelők futnak le. A handlerek minden esetben \textit{IO} akciók, amelyek valamilyen módon módosítják a globális állapotot (lásd 3.2.2.). A szoftver fejlesztése során fontos volt, hogy minél kevesebb legyen az tisztátalan (impure), \textit{IO}-n belül elvégzett számítás. Igyekeztem a program logikájának minél nagyobb részét egy tiszta, nem monadikus környezetben megvalósítani. Így a számítások helyessége könnyebben tesztelhető/verifikálható, az eseménykezelők már keveset számolnak az \textit{IO}-ban.
+Az alkalmazás a \textit{GTK+} logikájának megfelelően eseményvezérelt. A felhasználó akciói eseményeket váltanak ki, amelyek hatására esenénykezelők futnak le. A handlerek minden esetben \textit{IO} akciók, amelyek valamilyen módon módosítják a globális állapotot (lásd 3.2.2). A szoftver fejlesztése során fontos volt, hogy minél kevesebb legyen az tisztátalan (impure), \textit{IO}-n belül elvégzett számítás. Igyekeztem a program logikájának minél nagyobb részét egy tiszta, nem monadikus környezetben megvalósítani. Így a számítások helyessége könnyebben tesztelhető/verifikálható, az eseménykezelők már keveset számolnak az \textit{IO}-ban.
 
 Az alkalmazás a parseolási feladatokhoz a \textit{parsec} csomagot, a gráfok kezeléséhez az \textit{fgl} csomagot, a ghci futtatásához pedig a \textit{ghcid}  csomagot használja. A modell adatainak könnyebb kezeléséhez a \textit{microlens-platform} csomagot használtam, ami a jól ismert \textit{lens} \cite{lens} csomag egy kevesebb funkciót és kevesebb függőséget tartalmazó változata. A függőségek pontos listája elérhető a Felhasználói dokumentációban, illetve az egyes programkomponensek részletes leírásakor is említésre kerülnek a fontosabb felhasznált csomagok.
 
@@ -149,10 +149,17 @@ A modulok közti függőségek a 3.1 ábrán láthatók. Az egyes komponensek el
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{GraphFunctions}
+	\includegraphics[width=0.5\textwidth]{GraphFunctions}
 	\caption{A Graphfunctions komponens interfésze}
 	\label{fig:appstructure}
 \end{figure}
+
+A \textit{DynGraph} típusosztály példányaival dolgozva gyakran szeretnénk olyan viselkedést megvalósítani, hogy a \textit{match} függvény segítségével ellenőrizzük, hogy egy csúcs szerepel-e a gráfban, majd a kapott \textit{Decomp} alapján megváltoztatjuk az eredeti gráfot. Ezt a viselkedést absztrahálja a \textit{lookupNodeThen} függvény. 
+
+A gráf módosításának egyik speciális esete egy címke megváltoztatása.(Az alkalmazásban a címkék \textit{Cell} típusúak). Erre szolgál a \textit{changeNodeLabBy} függvény, és speciális esete a \textit{changeNodeLab}. Fontos megjegyezni, hogy ez a két függvény futásidejű hibát ad, ha a paraméterül kapott \textit{Decomp} első komponense \textit{Nothing}. Így ezeket a függvényeket csak a \textit{lookupNodeThen} második paramétereként érdemes használni. (Ez az az eset, amikor a keresett csúcs benne volt a gráfban).
+
+A fentiek mellett a modul definiálja az \textit{lpLevel} függvényt is, ami az első paraméterben megadott csúcsból a második paraméterben megadott gráfban elérhető összes csúcshoz hozzárendeli az odavezető leghosszabb út hosszát. Az algoritmus a hivatkozott internetes forrásból \cite{lp_geeks} származik. A mi esetünkben minden él súlya 1, így a képletek kicsit egyszerűsödnek.
+
 \section{Spreadsheet}
 
 \subsection{Áttekintés}
@@ -463,7 +470,7 @@ A modul emellett exportálja a \mbox{\textit{shiftCode :: (Int,Int) -> String ->
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[width=\textwidth]{Persistence}
+	\includegraphics[width=0.5\textwidth]{Persistence}
 	\caption{Az \textit{Persistence} komponens interfésze}
 	\label{fig:appstructure}
 \end{figure}
