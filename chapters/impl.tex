@@ -112,6 +112,7 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 			\item \textbf{App.Setup.CommandLine} -- a parancssor eseményeinek kezelése
 			\item \textbf{App.Setup.Editor} -- a kódszerkesztő eseményeinek kezelése
 			\item \textbf{App.Setup.Global} -- több GUI komponens által is használt akciók
+			\item \textbf{App.Setup.MainWindow} -- a főablakhoz tartozó események kezelése
 			\item \textbf{App.Setup.Menubar} -- menüsor gombjaihoz tartozó események kezelése
 			\item \textbf{App.Setup.Table} -- a számolótáblát megjelenítő táblázat eseményeinek kezelése
 		\end{itemize}
@@ -516,7 +517,6 @@ A \textit{runApp} akció a következőképpen határozza meg a program működé
 \begin{compactenum}
 	\item Hozzárendeli a GUI elemeihez az eseménykezelőket (\textit{App.Setup.setupGui}).
 	\item Betölti a beállított keresési útvonalakat és modulokat a GHCi-be (\textit{Eval.Ghci.loadModules}). Ha nem található a konfigurációs fájl, egy figyelmeztetést ír a standard kimenetre.
-	\item Beállítja, hogy az alkalmazás bezárásakor álljon le a GHCi és a modulok konfigurációja kerüljön mentésre.
 	\item Megjeleníti a GUI-t és elindítja a main loopot. 
 \end{compactenum}
 
@@ -538,7 +538,7 @@ Az akció "*new file"-ra állítja a fő ablak címét, mivel az alkalmazás eli
 
 \subsection{App.Setup}
 
-Ez a modul exportálja a \textit{setupGui} akciót, amelynek feladata, hogy a GUI-hoz eseménykezelőket rendeljen. Ezek az eseménykezelők definiálják az alkalmazás lényegi működését. A \textit{setupGui} akció rendre végrehajtja a \textit{setupEditor}, \textit{setupCommandLine}, \textit{setupMenubar} és \textit{setupTable} akciókat, amelyek definiálják az egyes GUI komponensek működését. Ezek az akciók a megfelelő nevű \textit{App.Setup.*} almodulban vannak definiálva.
+Ez a modul exportálja a \textit{setupGui} akciót, amelynek feladata, hogy a GUI-hoz eseménykezelőket rendeljen. Ezek az eseménykezelők definiálják az alkalmazás lényegi működését. A \textit{setupGui} akció rendre végrehajtja a \textit{setupEditor}, \textit{setupCommandLine}, \textit{setupMenubar}, \textit{setupTable} és \textit{setupMainWindow} akciókat, amelyek definiálják az egyes GUI komponensek működését. Ezek az akciók a megfelelő nevű \textit{App.Setup.*} almodulban vannak definiálva.
 
 Az eseménykezelők megadásához egy \textit{IO ()} akcióra vagy egy \mbox{\textit{Event-> IO ()}} függvényre van szükség. Ez azért hátrányos, mert nem lehetséges az eseménykezelőket közvetlenül a ReaderT kontextusban definiálni. Ezért az eseménykezelők megadására az alábbi minta használatos:
 
@@ -593,6 +593,10 @@ Az összegyűjtött eredmények ezután cacheltetnek \mbox{(\textit{Spreadsheet.
 
 A számolótábla állapota alapján frissíti a cellákban megjelenített szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt. A cellatartalmak lekérdezése a GUI \textit{entryKeys} komponensében tárolt kulcsok alapján történik.
 
+\subsubsection{runAreYouSureDialog :: IO Bool}
+
+Egy felugró ablak segítségével kér a felhasználótól egy igen-nem választ ("biztos-e ebben?" dialógus). Több eseménykezelő is használja azon esetekben, amikor fennálna a lehetőség, hogy a végrehajtandó akció végrehajtása során elvesznének nem mentett információk.
+
 \subsection{App.Setup.CommandLine}
 
 A modul a parancssor (\textit{Entry}) \textit{onEntryActivate} eseményéhez (enter billentyű leütése) rendel eseménykezelőt. Az esemény hatására bekövetkező viselkedés a következő:
@@ -617,13 +621,24 @@ A fókusz elvesztésekor és az enter leütésekor az alábbi viselkedés követ
 
 A fókusz megszerzésekor amennyiben volt kijelölt cella, úgy annak a legutóbb megadott kódja jelenik meg a szerkesztőben.
 
+\subsection{App.Setup.MainWindow}
+
+A modul a főablak (\textit{Window}) \textit{onDelete} (bezárás megkísérlése) és onDestroy (ablak megsemmisítése) eseményeihez rendel eseménykezelőket.
+
+A bezárás megkísérlésekor felugrik egy "biztos-e ebben?" dialógus \mbox{(\textit{App.Setup.Global.runAreYouSureDialog})}. Ha a válasz "nem", az eseménykezelő \textit{True}-t ad vissza, ezzel kimaszkolva az eseményt, így akadályozva meg a bezárást. Igenlő válasz esetén az eseménykezelő visszatérési értéke \textit{False}, az esemény továbbterjedhet.
+
+Ha megsemmisül az ablak, az alábbiak történnek:
+\begin{compactenum}
+	\item Leáll a main loop.
+	\item Leáll a háttérben futó GHCi folyamat.
+	\item Mentésre kerül a modulkonfigurációs fájl.
+\end{compactenum}
+
 \subsection{App.Setup.Menubar}
 
 A modul eseménykezelőket rendel a menüsor gombjainak (\textit{Button}) \textit{onClicked} eseményéhez.
 
-A funkciók megvalósítása dialógusok segítségével történik (\textit{FileChooserDialog} és \textit{Dialog}). A "Modules" és "Search paths" gombokhoz egy közös akció tartozik, ami paraméterezhető a változtatandó beállítással (\textit{ModuleActionType}). 
-
-A modul definiál egy \textit{runAreYouSureDialog} segédakciót, amely egy felugró ablak segítségével kér a felhasználótól egy igen-nem választ ("biztos-e ebben" dialógus). Több eseménykezelő is használja azon esetekben, amikor fennálna a lehetőség, hogy a végrehajtandó akció végrehajtása során elvesznének nem mentett információk.
+A funkciók megvalósítása dialógusok segítségével történik (\textit{FileChooserDialog} és \textit{Dialog}). A "Modules" és "Search paths" gombokhoz egy közös akció tartozik, ami paraméterezhető a változtatandó beállítással (\textit{ModuleActionType}). Betöltés és új fájl létrehozásakor felugrik egy "biztos-e ebben?" dialógus \mbox{(\textit{App.Setup.Global.runAreYouSureDialog})}
 
 \subsection{App.Setup.Table}
 
@@ -704,12 +719,12 @@ A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként 
 	\begin{itemize}
 		\item A futtatható állomány futtatásakor elindul a szoftver. Megjelenik az üres számolótábla. A fejléc szövege "*new file".
 		\item A háttérben elindul a GHCi folyamat.
-		\item Indításkor betöltésre kerülnek a beállított GHCi modulok és keresési útvonalak. \textbf{Nem található konfigurációs fájl esetén egy hibaüzenet kerül megjelenítésre.}
+		\item Indításkor betöltésre kerülnek a beállított GHCi modulok és keresési útvonalak. Nem található konfigurációs fájl esetén egy hibaüzenet kerül megjelenítésre.
 	\end{itemize}
 	\item Az alkalmazás leállítása
 	\begin{itemize}
 		\item A bezárás gombra kattintva a szoftver futása megáll.
-		\item \textbf{Mentetlen munka esetén felugrik a "biztos-e ebben" dialógus.}
+		\item Mentetlen munka esetén felugrik a "biztos-e ebben" dialógus.
 		\item A szoftver leállítása után leállnak a háttérben futó GHCi folyamatok.
 		\item Leállításkor mentésre kerülnek a beállított GHCi modulok és keresési útvonalak. (./modules.sanyi)
 	\end{itemize}
@@ -717,8 +732,8 @@ A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként 
 	\begin{itemize}
 		\item A megfelelő gombra kattintva, illetve az "Alt-N" billentyűkombináció leütésére elkezdődik egy új tábla létrehozása.
 		\item Mentetlen munka esetén felugrik a "biztos-e ebben" dialógus.
-		\item \textbf{Új tábla létrehozásakor beállíthatók a tábla dimenziói. Nagy táblaméret esetén lehet görgetni az ablaknézetet.}
 		\item A létrejött új tábla üres.
+		\item Új fájl létrehozása után az ablak címe "*new file"	
 	\end{itemize}
 	\item Tábla mentése és betöltése
 	\begin{itemize}
@@ -737,7 +752,6 @@ A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként 
 		\item Üres cellatartomány megadása.
 		\item Formulák, értékek, üres és hibás cellák másolása/mozgatása.
 		\item Esetek, amikor a kiinduló- és céltartomány részben/teljesen egybeesik.
-		\item \textbf{Mi történik, ha kilóg a céltartomány?}
 		\item Körkörös hivatkozás előidézése a céltartományban.
 	\end{itemize}
 	\item Parancssor további tesztelése
