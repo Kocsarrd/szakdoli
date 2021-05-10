@@ -369,6 +369,8 @@ Az első szempont megvalósításához a kiértékelés során egy kiszámított
 
 A második szempont megvalósításához a kódgenerálás során értékadások sorozata jön létre, és a kiértékelés során ezen értékadások egyesével hajtódnak végre. Így ha valamelyik cella kiértékelésének eredménye egy hiba, csak a tőle függő cellák értéke lesz hiba. 
 
+Sikertelen kódgenerálás esetén a \textit{generateCode} függvény eredménye egy \textit{Left} konstruktorba csomagolt pár (\textit{(GenError, [CellID])}). Az első komponens jelzi a hiba típusát (\textit{GenEmptyCell}, ha a gráfban nem található üres cellához szerettünk volna kódot generálni; \textit{GenMissingDep}, ha hiányzó függőségek voltak). A második komponens a megváltoztatott cellától függő cellák listája. Erre a kiértékelést végző akciónak van szüksége, hogy cache-elhesse a leszármazott cellákban a hibát.
+
 Ha sikeres a generálás, a \textit{generateCode} függvény eredménye két (egy \textit{Right} konstruktorba csomagolt) lista (\textit{[String],[(String,CellID)]}. Az első listába kerülnek az értékadások, amelyek az úgynevezett külső függőségekhez lettek generálva. A második lista tartalmazza az olyan értékadásokat, amelyek a megváltoztatott id-jű cellától függnek. A \textit{Spreadsheet.Types} modulnál tárgyalt gráfreprezentáció segítségével az előbbi két fogalmat az alábbi módon tehetjük precízzé: 
 
 Legyen \textit{id} a megváltoztatott cella azonosítója, és legyen $lab : CellID \rightarrow Cell$ a gráf csúcsaihoz a megfelelő cellát hozzárendelő függvény! Legyenek $For,Lab : Cell \rightarrow \mathbb{L}$ predikátumok, amelyek akkor adnak igazat, ha a paraméterük a megfelelő konstruktorral jött létre. Legyen \textit{b} egy létező cellaazonosító! Ekkor:
@@ -581,13 +583,15 @@ A globális állapot \textit{state} mezője alapján frissíti a cellákban megj
 
 Kiértékeli a megadott azonosítójú cellához generált kódrészleteket, majd a kiértékelés eredményét cacheli a számolótáblába. A betöltött fájl állapotát \textit{Modified}-ra módosítja.
 
-A kiértékeléshez először kódot generál a kapott azonosítóhoz \mbox{(\textit{Spreadsheet.CodeGeneration.generateCode})}. Kódgenerálási hiba esetén logolja a hibát jelző üzenetet. 
+A kiértékeléshez először kódot generál a kapott azonosítóhoz \mbox{(\textit{Spreadsheet.CodeGeneration.generateCode})}. Kódgenerálási hiba esetén cacheli a hibát jelző üzenetet a leszármazott cellákba.
 
 Ha sikeres volt a kódgenerálás, akkor a kapott sorrendben kiértékeli az utasításokat a GHCi-ben. Ehhez először törli a korábbi GHCi bindingokat az \textit{Eval.Ghci.loadModules} akcióval. Erre azért van szükség, hogy ha egy cellához rendelt változót nem sikerült kiszámítani (pl. típushiba miatt), akkor a leszármazott cellához ne legyen felhasználható egy korábbi kiértékeléskor kiszámított, elavult érték. Ezután kiértékeli a külső dependenciákat, azaz azon cellákat, amelyek nem függnek a megváltoztatott cellától, de függőségei valamely  a megváltoztatott cellától függő cellának. (Ez a kódgenerálás által adott első lista.)
 
 Ezután következik a második lista utasításainak kiértékelése. Minden utasítás esetén először végrehajtja az értékadást. Ha az eredmény hiba, a kiértékelés eredménye hiba. Ha az eredmény nem hiba, akkor lekérdezi a kiértékelt változót. A kódgenerálás garanciát ad arra, hogy egy cella mindig a függőségei után kerül kiértékelésre.
 
 Az összegyűjtött eredmények ezután cacheltetnek \mbox{(\textit{Spreadsheet.Interface.cacheCell})}. A betöltött fájl állapota \textit{Modified} lesz.
+
+A GHCi által adott hibákat típushibákat kiírja a log ablakba. A futási idejű hibákat jelenleg nem logolja, ez egy ismert hiba.
 
 \subsubsection{updateView :: ReaderT Env IO}
 

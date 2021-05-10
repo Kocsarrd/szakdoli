@@ -110,13 +110,12 @@ Egy cella kódjának megváltoztatása után előfordulhatnak hibák, az alábbi
 \begin{compactenum}
 	\item Ha egy cella kódját nem sikerül parseolni, a cellában az "FNoParse" szöveg jelenik meg. Parseolási hiba csak formula esetén léphet fel, ha szerepel a kódban '§' karakter, de nem egy értelmes hivatkozás részeként. Példák: "=§a§", "=a1§", "=§a1\$1§. Amennyiben a referenciák helyesek, de a Haskell kód nem, akkor az kiértékelési hibaként jelenik meg.
 	\item Ha a cella megváltoztatásával hivatkozási kör jönne létre a számolótáblában, a megváltoztatni kívánt cellában az "FCycleRefError" szöveg jelenik meg.
-	\item Ha a megváltoztatott cella olyan cellára hivatkozik, amely hibás (azaz nem nyerhető ki az értéke), akkor a cellában az "FNoCache" hibaüzenet jelenik meg. 
+	\item Ha a megváltoztatott cella olyan cellára hivatkozik, amely hibás (azaz nem nyerhető ki az értéke), akkor a cellában az "FNoCache" vagy "FMissingDepError" hibaüzenet jelenik meg. Az utóbbi akkor fordul elő, ha parseolási hiba volt, az előbbi a kiértékelési hibás függőségek esetén jelenik meg. Fontos: az üres cella értéke kinyerhető, lásd 2.4.2. 
 	\item Ha a kiértékelés során hiba történt (Haskell szintaxishiba/típushiba/futásidejű hiba), akkor a cellában az és leszármazott celláiban az "FGhciError" hibaüzenet jelenik meg.
 	\item Ha a cella kiértékelése egy másodpercnél tovább tartana, a kiértékelés leáll, és a cellában az "FTimeoutError" szöveg jelenik meg. A leszármazott cellákban az "FGhciError" szöveg jelenik meg. Megjegyzés: a végtelen GHCi számítások megszakítása nem működik teljesen megbízhatóan, így a legjobb tudatosan elkerülni az ilyen számítások futtatását. (A probléma részletes leírása megtalálható a 3.4.3 szakaszban.)
 \end{compactenum}
 	
-Megjegyzés: a hibaüzenetek az alkalmazás jelen verziójában nem tartalmaznak extra információt a fent leírtakhoz képest. 
-
+Megjegyzés: GHCi kiértékelési hiba esetén a GHCi által adott hibaüzenet megjelenik a log ablakban. Ez nem mindig elég beszédes, de segíthet azonosítani a hibát.
 
 \section{A standard könyvtár}
 
