@@ -15,14 +15,14 @@ A 3.8 rész tartalmazza a tesztelési eljárás leírását és a tesztelés ere
 
 Az alkalmazás Haskell nyelven íródott. A grafikus megjelenítés \textit{GTK+} alapú, a \textit{gtk2hs} csomag által biztosított bindingokat használtam a grafikus felület kezeléséhez. Ez a csomag a \textit{GTK+} osztályhierarchiáját Haskell típusosztályok hierarchiájaként reprezentálja. Az egyes osztályok metódusainak a típusosztályok definíciójában szereplő függvények felelnek meg. A \textit{GTK+} típusai foreign pointerek segítségével vannak megvalósítva, és \textit{IO}-ban használhatók. 
 
-Az alkalmazás a \textit{GTK+} logikájának megfelelően eseményvezérelt. A felhasználó akciói eseményeket váltanak ki, amelyek hatására esenénykezelők futnak le. A handlerek minden esetben \textit{IO} akciók, amelyek valamilyen módon módosítják a globális állapotot (lásd 3.2.2). A szoftver fejlesztése során fontos volt, hogy minél kevesebb legyen az tisztátalan (impure), \textit{IO}-n belül elvégzett számítás. Igyekeztem a program logikájának minél nagyobb részét egy tiszta, nem monadikus környezetben megvalósítani. Így a számítások helyessége könnyebben tesztelhető/verifikálható, az eseménykezelők már keveset számolnak az \textit{IO}-ban.
+Az alkalmazás a \textit{GTK+} logikájának megfelelően eseményvezérelt. A felhasználó akciói eseményeket váltanak ki, melyek hatására esenénykezelők futnak le. A handlerek minden esetben \textit{IO} akciók, melyek valamilyen módon módosítják a globális állapotot (lásd 3.2.2). A szoftver fejlesztése során fontos volt, hogy minél kevesebb legyen a tisztátalan (impure), \textit{IO}-n belül elvégzett számítás. Igyekeztem a program logikájának minél nagyobb részét egy tiszta, nem monadikus környezetben megvalósítani. Így a számítások helyessége könnyebben tesztelhető/verifikálható, az eseménykezelők már keveset számolnak az \textit{IO}-ban.
 
 Az alkalmazás a parseolási feladatokhoz a \textit{parsec} csomagot, a gráfok kezeléséhez az \textit{fgl} csomagot, a ghci futtatásához pedig a \textit{ghcid}  csomagot használja. A modell adatainak könnyebb kezeléséhez a \textit{microlens-platform} csomagot használtam, ami a jól ismert \textit{lens} \cite{lens} csomag egy kevesebb funkciót és kevesebb függőséget tartalmazó változata. A függőségek pontos listája elérhető a Felhasználói dokumentációban, illetve az egyes programkomponensek részletes leírásakor is említésre kerülnek a fontosabb felhasznált csomagok.
 
 \subsection{A globális állapot}
 
 Az alkalmazás fő felépítését egy az FP Complete blogján megjelent cikk \cite{readert} inspirálta. 
-Az alkalmazás a globális (olvasható) állapotot a \textit{ReaderT} monád transzformer segítségével valósítja meg, az alkalmazás vezérlése így egy \textit{ReaderT Env IO} környezetben történik, ahol \textit{Env} a globális állapotot leíró adattípus. Fontos megjegyezni, hogy bár az \textit{Env} típus komponensei az inicializálás után sosem módosulhatnak, a mögöttes állapot még változhat, hiszen a komponensek módosítható referenciák. Ez hasonló a Java nyelvben használható konstans referencia koncepciójához: a referencia nem változhat, de a referált adat igen.
+Az alkalmazás a globális (olvasható) állapotot a \textit{ReaderT} monád transzformer segítségével valósítja meg, az alkalmazás vezérlése így egy \textit{ReaderT Env IO} környezetben történik, ahol \textit{Env} a globális állapotot leíró adattípus. Fontos megjegyezni, hogy bár az \textit{Env} típus komponensei az inicializálás után sosem módosulhatnak, a mögöttes állapot még változhat, hiszen a komponensek módosítható referenciák.
 
 A fentebb referált cikk által inspirálva a (GUI komponensein kívüli) globális állapot egy \textit{StateT} transzformer helyett módosítható referenciákkal (\textit{IORef} és \textit{MVar}) kezeltetik. Ugyanis hiába tiszta; ha globálisan használjuk a \textit{StateT}-t, valójában -- a programlogika szintjén -- ugyanúgy egy globális, módosítható állapotot vezetünk be. Szintén egy szempont, hogy a \textit{GTK+} alapú \textit{GUI} miatt eleve szerepelnek módosítható referenciák (foreign pointer) a globális állapotban, így ez a probléma semmiképpen nem kerülhető el teljesen. Egy további érv a globális \textit{StateT} ellen, hogy egy nagyobb monad stack szükségszerűen bonyolítja a programot. A \textit{ReaderT IO} ellenben még kifejezetten könnyen kezelhető. A cikk konkurrenciához köthető problémákat is említ a \textit{StateT}-vel kapcsolatban. Ez a szoftver jelenlegi verziójában még nem olyan jelentős (lévén a mostani implementáció nagyon kis mértékben épít konkurrenciára). Azonban a jövőre nézve mindenképpen előnyös, ha a szoftvert könnyen lehet a konkurrens paradigma szerint bővíteni.
 
@@ -30,7 +30,7 @@ Ezen bevezető után tekintsük a globális állapot definícióját! Az alábbi
 \lstset{caption={Az Env típus}, label=src:hs}
 \begin{lstlisting}[language={Haskell}, label=src:env]
 data EvalConfig = EvalConfig { modules :: [String]
-                             , paths :: [String]
+                             , paths   :: [String]
                              }
 
 data EvalControl = EvalControl { eGhci    :: MVar Ghci
@@ -56,7 +56,7 @@ A \textit{gui} mező tartalmazza a GUI komponenseit. A pontos típusdefiníció 
 
 A \textit{state} mező egy módosítható referencia, ami a számolótáblát reprezentáló, \textit{Spreadsheet} típusú adatot referálja. A \textit{file} adattag tartalmazza az éppen a táblázatkezelőbe betöltött fájl fontosabb adatait (fájl neve, és állapota), amennyiben van betöltve fájl. 
 
-Az \textit{EvalConfig} típus példánya \textit{Generic} és \textit{Serialize} típusosztályoknak. Erre az adatok mentéséhez van szükség (lásd 3.6.).
+Az \textit{EvalConfig} típus példánya a \textit{Generic} és \textit{Serialize} típusosztályoknak. Erre az adatok mentéséhez van szükség (lásd 3.6.).
 
 \subsection{A GUI}
 
@@ -64,11 +64,11 @@ Az alábbi kódrészlet a GUI definíciója az \textit{App.Types} modulból:
 
 \lstset{caption={A Gui típus}, label=src:gui}
 \begin{lstlisting}[language={Haskell}]
-data Menubar = Menubar { newButton :: Button
-                       , saveButton :: Button
-                       , loadButton :: Button
+data Menubar = Menubar { newButton     :: Button
+                       , saveButton    :: Button
+                       , loadButton    :: Button
                        , modulesButton :: Button
-                       , pathsButton :: Button }
+                       , pathsButton   :: Button }
 
 data Gui = Gui { mainWindow     :: Window
                , logWindow      :: ScrolledWindow
@@ -85,13 +85,13 @@ A \textit{Gui} típus tartalmazza a Gui azon komponenseit, amelyekre szükség v
 
 A számolótábla megjelenítése egy \textit{Table} segítségével történik. A cellákat a \textit{Table}-ben elhelyezett \textit{Entry}-k reprezentálják. Minden \textit{Entry}-hez egy \textit{(Int,Int)} kulcs is eltároltatik. Ez mutatja, hogy a tábla melyik pozíciójához tartozik az adott \textit{Entry}. Ez egy objektumorientált nyelvben megoldható lenne egy leszármazott widgettel (amelynek van egy extra mezője), azonban a \textit{gtk2hs} keretein belül ezt körülményes lett volna megoldani, így inkább a jelenlegi megoldást választottam. Az \textit{Entry}-kulcs párokat az \textit{entryKeys} mező tartalmazza. Az oszlopok tetején levő gombokat a \textit{colButtonKeys} mező tartalmazza. Ebben a mezőben az is el van tárolva, hogy melyik gombhoz melyik oszlop tartozik.
 
-A grafikus felület alján található log egy \textit{ScrolledWindow}-ban elhelyezkedő \textit{TextView}. Magára a \textit{TextView}-ra nincs szükség, csak az általa használt \textit{TextBuffer}-re, ezért azt nem is tartalmazza a \textit{Gui}. Az editor és a parancssor egy-egy \textit{Entry}-vel vannak implementálva. A \textit{menu} komponens tartalmazza felső menüsoron elérhető gombokat. 
+A grafikus felület alján található log egy \textit{ScrolledWindow}-ban elhelyezkedő \textit{TextView}. Magára a \textit{TextView}-ra nincs szükség, csak az általa használt \textit{TextBuffer}-re, ezért arra nem is tartalmaz hivatkozást a \textit{Gui} típus. Az editor és a parancssor egy-egy \textit{Entry}-vel vannak implementálva. A \textit{menu} komponens tartalmazza felső menüsoron elérhető gombokat. 
 
 A GUI layout ennél alaposabb dokumentációja a 3.7.3 alfejezetben érhető el. 
 
 \subsection{A cellaazonosítók reprezentációja}
 
-A nézetben célszerű a táblázat celláit \textit{(Int,Int)} párokkal azonosítani (oszlop és sor száma). A számolótábla logikájában (gráfreprezentáció, ahol a csúcsok jelölik a cellákat, lásd 3.4.1) azonban a cellákat egész számokkal kell azonosítani. A konverzióhoz az \textit{(Int,Int)} típusra példányosítva lett az \textit{Enum} típusosztály. (Megjegyzés: félrevezető lehet egy párokra megadott \textit{Enum} példány. A kódban csak a \textit{fromEnum} és \textit{toEnum} függvények használatosak párokra a típusosztály függvényei közül. A jövőben valószínűleg az \textit{Enum} példány helyett csak a konverziós függvények lesznek definiálva és használva.)
+A nézetben célszerű a táblázat celláit \textit{(Int,Int)} párokkal azonosítani (oszlop és sor száma). A számolótábla logikájában (gráfreprezentáció, ahol a csúcsok jelölik a cellákat, lásd 3.4.2) azonban a cellákat egész számokkal kell azonosítani. A konverzióhoz az \textit{(Int,Int)} típusra példányosítva lett az \textit{Enum} típusosztály. (Megjegyzés: félrevezető lehet egy párokra megadott \textit{Enum} példány. A kódban csak a \textit{fromEnum} és \textit{toEnum} függvények használatosak párokra a típusosztály függvényei közül. A jövőben valószínűleg az \textit{Enum} példány helyett csak a konverziós függvények lesznek definiálva és használva.)
 
 A nézetben bármely cellához tartozó \textit{(Int,Int)} azonosító mindkét tagja nemnegatív. Az \textit{A0} cellához tartozik a \textit{(0,0)} azonosító. Az első komponens az oszlop sorszáma, a második a sorhoz tartozó sorszám. A megadott \textit{fromEnum} függvény leszűkítése egy $\mathbb{N} \times \mathbb{N} \rightarrow \mathbb{N}$ bijekció, így a gráfreprezentációban minden cella azonosítója nemnegatív.
 
@@ -106,14 +106,14 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 	\item \textbf{App} -- az alkalmazás fő logikája, eseménykezelés
 	\begin{itemize}
 		\item \textbf{App.CreateEnv} -- a globális állapot inicializálása, funkcionalitás nélküli GUI létrehozása
-		\item \textbf{App.RunApp} -- a főprogram definiálása, a main loop terminálásakor végrehajtandó IO akciók megadása
+		\item \textbf{App.RunApp} -- a főprogram definiálása
 		\item \textbf{App.Setup}	-- funkcionalitás hozzárendelése a GUI komponenseihez
 		\begin{itemize}
 			\item \textbf{App.Setup.CommandLine} -- a parancssor eseményeinek kezelése
 			\item \textbf{App.Setup.Editor} -- a kódszerkesztő eseményeinek kezelése
-			\item \textbf{App.Setup.Global} -- több GUI komponens által is használt akciók
-			\item \textbf{App.Setup.MainWindow} -- a főablakhoz tartozó események kezelése
-			\item \textbf{App.Setup.Menubar} -- menüsor gombjaihoz tartozó események kezelése
+			\item \textbf{App.Setup.Global} -- több GUI elem eseménykezelői által is használt akciók
+			\item \textbf{App.Setup.MainWindow} -- a főablakhoz tartozó események kezelése (pl. bezáráskor végrehajtandó akciók)
+			\item \textbf{App.Setup.Menubar} -- a menüsor gombjaihoz tartozó események kezelése
 			\item \textbf{App.Setup.Table} -- a számolótáblát megjelenítő táblázat eseményeinek kezelése
 		\end{itemize}
 		\item \textbf{App.Types} -- a globális állapothoz tartozó típusdefiníciók
@@ -123,19 +123,19 @@ Az alábbiakban röviden összefoglalom a szoftver moduljainak fő feladatát:
 		\item \textbf{Eval.CodeGeneration} -- kódgenerálás a kiértékeléshez (ezen modul dokumentációjában szerepel a kiértékelési modell leírása is)
 		\item \textbf{Eval.CommandLine} -- a parancssorba beütött parancsok reprezentációjának előállítása
 		\item \textbf{Eval.EvalMain} -- a tényleges kiértékelést végző szál főprogramja
-		\item \textbf{Eval.Ghci} -- az \textbf{App} számára biztosított interfész a kiértékeléshez
+		\item \textbf{Eval.Ghci} -- az \textit{App} számára biztosított interfész a kiértékeléshez
 	\end{itemize}
 	\item \textbf{GraphFunctions} -- a \textit{DynGraph} típusosztályhoz kapcsolódó, más modulokban felhasznált segédfüggvények 	
-	\item \textbf{Persistence} -- az App számára biztosított interfész fájlok mentéséhez és betöltéséhez
+	\item \textbf{Persistence} -- az \textit{App} számára biztosított interfész fájlok mentéséhez és betöltéséhez
 	\item \textbf{Spreadsheet} -- a számolótábla reprezentációja és műveletei
 	\begin{itemize}
 		\item \textbf{Spreadsheet.Interface} -- a számolótábla műveletei, amiket az App használhat
 		\item \textbf{Spreadsheet.Parser} -- felhasználó által írt kód reprezentációjának előállítása
-		\item \textbf{Spreadsheet.Types} -- a számolótábla és kapcsolódó kivételek típusdefiníciói
+		\item \textbf{Spreadsheet.Types} -- a számolótábla típus, és kapcsolódó kivételek típusdefiníciói
 	\end{itemize}
 \end{itemize} 
 
-Az alkalmazáshoz emellett hozzátartozik az \textbf{Empty} modul, ami az alkalmazás standard könyvtára. Ez a modul nem része az alkalmazásnak (abban az értelemben, hogy egyik fordítási egység sem hivatkozik a modul tartalmára), de a háttérben futó GHCi folyamatban mindig elérhetők a modul által exportált függvények. Az \textbf{Empty} modulról bővebben a 2.5 szakaszban esik szó.
+Az alkalmazáshoz emellett hozzátartozik az \textit{Empty} modul, ami az alkalmazás standard könyvtára. Ez a modul nem része az alkalmazásnak (abban az értelemben, hogy egyik fordítási egység sem hivatkozik a modul tartalmára), de a háttérben futó GHCi folyamatban mindig elérhetők a modul által exportált függvények. Az \textit{Empty} modulról bővebben a 2.5 szakaszban esik szó.
 
 A modulok közti függőségek a 3.1 ábrán láthatók. Az egyes komponensek eltérő színnel vannak jelölve. \textit{A} modul importálja \textit{B} modult, ha szerepel $A \rightarrow B$ nyíl az ábrán. 
 
@@ -155,9 +155,9 @@ A modulok közti függőségek a 3.1 ábrán láthatók. Az egyes komponensek el
 	\label{fig:appstructure}
 \end{figure}
 
-A \textit{DynGraph} típusosztály példányaival dolgozva gyakran szeretnénk olyan viselkedést megvalósítani, hogy a \textit{match} függvény segítségével ellenőrizzük, hogy egy csúcs szerepel-e a gráfban, majd a kapott \textit{Decomp} alapján megváltoztatjuk az eredeti gráfot. Ezt a viselkedést absztrahálja a \textit{lookupNodeThen} függvény. 
+A \textit{DynGraph} típusosztály példányaival dolgozva gyakran szeretnénk a következő viselkedést megvalósítani: a \textit{match} függvény segítségével ellenőrizzük, hogy egy csúcs szerepel-e a gráfban, majd a kapott \textit{Decomp} alapján megváltoztatjuk az eredeti gráfot. Ezt a viselkedést absztrahálja a \textit{lookupNodeThen} függvény. 
 
-A gráf módosításának egyik speciális esete egy címke megváltoztatása.(Az alkalmazásban a címkék \textit{Cell} típusúak). Erre szolgál a \textit{changeNodeLabBy} függvény, és speciális esete a \textit{changeNodeLab}. Fontos megjegyezni, hogy ez a két függvény futásidejű hibát ad, ha a paraméterül kapott \textit{Decomp} első komponense \textit{Nothing}. Így ezeket a függvényeket csak a \textit{lookupNodeThen} második paramétereként érdemes használni. (Ez az az eset, amikor a keresett csúcs benne volt a gráfban).
+A gráf módosításának egyik speciális esete egy címke megváltoztatása.(Az alkalmazásban a címkék \textit{Cell} típusúak). Erre szolgál a \textit{changeNodeLabBy} függvény és speciális esete a \textit{changeNodeLab}. Fontos megjegyezni, hogy ez a két függvény futásidejű hibát ad, ha a paraméterül kapott \textit{Decomp} első komponense \textit{Nothing}. Így ezeket a függvényeket csak a \textit{lookupNodeThen} második paramétereként érdemes használni. (Ez annak az esetnek a kezelése, amikor a keresett csúcs benne volt a gráfban).
 
 A fentiek mellett a modul definiálja az \textit{lpLevel} függvényt is, ami az első paraméterben megadott csúcsból a második paraméterben megadott gráfban elérhető összes csúcshoz hozzárendeli az odavezető leghosszabb út hosszát. Az algoritmus a hivatkozott internetes forrásból \cite{lp_geeks} származik. A mi esetünkben minden él súlya 1, így a képletek kicsit egyszerűsödnek.
 
@@ -174,7 +174,9 @@ A fentiek mellett a modul definiálja az \textit{lpLevel} függvényt is, ami az
 
 \subsection{Spreadsheet.Types}
 
-Az alkalmazás a Spreadsheet típussal reprezentálja a számolótábla állapotát. Alább látható a Spreadsheet.Types modulban szereplő definíció:
+Az alkalmazás a Spreadsheet típussal reprezentálja a számolótábla állapotát. Alább látható a Spreadsheet.Types modulban szereplő definíció (deriving clause-ok nélkül):
+
+\newpage
 
 \lstset{caption={A Spreadsheet típus}, label=src:hs2}
 \begin{lstlisting}[language={Haskell}]
@@ -207,7 +209,7 @@ data Spreadsheet = SS { _sheet :: Gr Cell Int
                       }
 \end{lstlisting}
 
-A Spreadsheet egy rekord típus, melynek három mezője van. A \textit{\_selected} mező jelenti az aktuálisan kijelölt cellát. Ez a mező kerülhetett volna a globális állapotba is, azonban a tervezés korai fázisában más döntés született, és a későbbiekben körülményes lett volna refaktorálni a kódot. (Ugyanakkor ennek átírása tervben van az alkalmazás egy későbbi verziójában.) A \textit{\_logMessage} mező tartalmazza a legutóbbi művelet kiértékeléséből származó szöveges (a GUI-ban a logra írandó) üzenetet.
+A Spreadsheet egy rekord típus, melynek három mezője van. A \textit{\_selected} mező jelenti az aktuálisan kijelölt cellát. Ez a mező kerülhetett volna a globális állapotba is, azonban a tervezés korai fázisában más döntés született, és a későbbiekben körülményes lett volna refaktorálni a kódot. (Ugyanakkor ennek átírása tervben van az alkalmazás egy későbbi verziójában.) A \textit{\_logMessage} mező tartalmazza a legutóbbi művelet kiértékeléséből származó szöveges (a GUI-ban a logra írandó) üzenetet. Megjegyzés: a log üzenet karbantartása még nem működik teljesen megbízhatóan.
 
 A \textit{\_sheet} mező reprezentálja a tényleges számolótáblát. A számolótábla egy irányított gráf, aminek a csúcsai \textit{Cell} típusú értékekkel vannak címkézve. Az élek egész számokkal vannak címkézve. (A számszerű élcímkékre csak a használt gráfcsomag által biztosított útkereső algoritmus megszorításai miatt van szükség. Az alkalmazás implementációjában minden él címkéje \textit{1}.) A gráfban minden csúcs a számolótábla egy cellájának felel meg. Egy \textit{A} csúcsból pontosan akkor megy él egy \textit{B} csúcsba, ha a \textit{B} csúcsban található cella kódja hivatkozik az \textit{A} csúcsban található cellára. 
 
@@ -223,7 +225,7 @@ Ha egy cella formulát tartalmaz, az a háromelemű \textit{Formula} rekorddal r
 
 A \textit{\_value} jelenti a formula kódgeneráláshoz szükséges reprezentációját.  Ez a reprezentáció \textit{ForPiece}-ek (formuladarabok) listája. Egy formuladarab vagy egy kódrészlet (\textit{String}) vagy cellaazonosítók listája, jelölve rendre azt is, hogy a hivatkozás abszolút vagy relatív az oszlopra és sorra nézve (\textit{RefType}). A hivatkozás típusának (relatív/abszolút) csak másoláskor és mozgatáskor van jelentősége. Jelenleg ezen funkciókhoz nincsenek is használva a \textit{\_value} mezőben tárolt \textit{RefType}-ok, de a szoftver további fejlődési lehetőségeire gondolva szerepelnek a reprezentációban.
 
-A \textit{\_value} mezőről részletesebben lesz szó a \textit{Spreadsheet.Parser} és a \textit{Spreadsheet.CodeGeneration} modulok leírásában. 
+A \textit{\_value} mezőről részletesebben lesz szó a 3.4.3 alfejezetben. 
 
 A \textit{Formula} típushoz tartozik egy invariáns állítás: a program futása során egy \textit{Formula} mindig a 3.1 táblázatban leírt állapotok valamelyikében figyelhető meg.
 
@@ -269,12 +271,14 @@ A modul feladata egy a felhasználó által egy cellához megadott kód (\textit
 
 Legyen a felhasználó által megadott kód \textit{str}. A \textit{rep} függvény az alább leírt specifikáció szerint állítja elő a kód cellareprezentációját. A reguláris kifejezések megadásakor a kifejezésre illeszkedő string előtt és után tetszőlegesen sok szóköz lehet, ha nincs másképp jelezve.
 
+\newpage	
+
 \begin{compactenum}
-	\item Ha str = "", rep str = \textit{Val EmptyCell}
-	\item Ha str illeszkedik a $((+|-|\varepsilon)D^+(.D^*|\varepsilon))|.D^+)$ reguláris kifejezésre, ahol D=(0|1|2|3|4|5|6|7|8|9), akkor rep str = \textit{Val (Num n)}, ahol \textit{n} a literál által ábrázolt lebegőpontos szám. 
-	\item Ha a fenti esetek egyike sem áll fent, és str nem (=C*) alakú (ahol C az összes karakterek halmaza), akkor rep str = \textit{Val (Str str)}
-	\item Ha B a betűk halmaza (a \textit{Data.Char} modul \textit{isLetter} függvényének igazsághalmaza), C' = $C \backslash \{\S\}$ és str \mbox{$(=((\S  (\varepsilon|\$)B(\varepsilon|\$)D^+:(\varepsilon|\$)B(\varepsilon|\$)D^+\S )|(\S (\varepsilon|\$)B(\varepsilon|\$)D^+\S )|(C'^+))^+)$} alakú, akkor a kód formulaként parseolható. rep str = \textit{Formula str (Left FNoCache) (Just ps)}, ahol ps definíciója alább szerepel.
-	\item Ha egyik fenti eset sem áll fent, akkor a parseolás sikertelen. Ekkor rep str = \textit{Formula str (Left FNoParse) Nothing}
+	\item Ha str = "", \textit{rep str = Val EmptyCell}
+	\item Ha str illeszkedik a $((+|-|\varepsilon)D^+(.D^*|\varepsilon))|.D^+)$ reguláris kifejezésre, ahol D=(0|1|2|3|4|5|6|7|8|9), akkor \textit{rep str = Val (Num n)}, ahol \textit{n} a literál által ábrázolt lebegőpontos szám. 
+	\item Ha a fenti esetek egyike sem áll fent, és str nem (=C*) alakú (ahol C az összes karakterek halmaza), akkor \textit{rep str = Val (Str str)}
+	\item Ha B a betűk halmaza (a \textit{Data.Char} modul \textit{isLetter} függvényének igazsághalmaza), C' = $C \backslash \{\S\}$ és str \mbox{$(=((\S  (\varepsilon|\$)B(\varepsilon|\$)D^+:(\varepsilon|\$)B(\varepsilon|\$)D^+\S )|(\S (\varepsilon|\$)B(\varepsilon|\$)D^+\S )|(C'^+))^+)$} alakú, akkor a kód formulaként parseolható. \textit{rep str = Formula str (Left FNoCache) (Just ps)}, ahol \textit{ps} definíciója alább szerepel.
+	\item Ha egyik fenti eset sem áll fent, akkor a parseolás sikertelen. Ekkor \textit{rep str = Formula str (Left FNoParse) Nothing}
 \end{compactenum}
 
 Ha \textit{str} formulaként parseolható (fenti 4. eset), egy egyszerű szintaktikus elemzés segítségével kaphatjuk a reprezentációjának \textit{\_value} komponensét. A parser először elhagyja az \textit{=} karaktert. Ezután sorban parseol substringeket a szó elejéről az alábbi módon:
@@ -283,9 +287,9 @@ Ha \textit{str} formulaként parseolható (fenti 4. eset), egy egyszerű szintak
 	\item Ha a soron következő substring nem olvasható cellahivatkozásként, akkor a parser végigolvassa a lehető leghosszabb $s = C'^+$ substringet, és az eredménylistához egy $Code\ s$-t ír.
 \end{compactenum}
 
-A cellahivatkozások feloldásához kihasználjuk, hogy a karakterek injektíven az egész számok halmazára képezhetők (az \textit{Enum} típusosztály műveleteivel). A kis- és nagybetűket nem különbözetjük meg. Emellett felhasználjuk az \textit{(Int,Int)} párokra definiált \textit{Enum} példányt is. (lásd 3.2.4) Ez a példány csak nemnegatív elemű párokra működik helyesen, de a program számára ez is elég. Jelölje $fromEnum^C$ a karaktert Int-té kódoló függvényt, és $fromEnum^P$ az \textit{(Int,Int)} párt Int-té kódoló függvényt. Jelölje $a,b :: Int$ esetén $[a..b]$ az $a \le n \le b$ n egész számok rendezett listáját! Ekkor a cellahivatkozások feloldása az alábbiak szerint történik:
+A cellahivatkozások feloldásához kihasználjuk, hogy a karakterek injektíven az egész számok halmazára képezhetők (az \textit{Enum} típusosztály műveleteivel). A kis- és nagybetűket nem különbözetjük meg. Emellett felhasználjuk az \textit{(Int,Int)} párokra definiált \textit{Enum} példányt is. (lásd 3.2.4) Ez a példány csak nemnegatív elemű párokra működik helyesen, de a program számára ez is elég. Jelölje $fromEnum^C$ a karaktert Int-té kódoló függvényt, és $fromEnum^P$ az \textit{(Int,Int)} párt Int-té kódoló függvényt. Jelölje $a,b :: Int$ esetén $[a..b]$ az $a \le n \le b$ egész számok rendezett listáját! Ekkor a cellahivatkozások feloldása az alábbiak szerint történik:
 \begin{compactenum}
-	\item Ha a hivatkozás $(\S (\varepsilon|\$)B(\varepsilon|\$)D^+\S )$ alakú, legyen \textit{b} a betű, és \textit{n} a számjegyek által reprezentált egész szám. Ekkor a kapott  \textit{rs} lista egyelemű. $rs\ = [(fromEnum^P\ (fromEnum^C,n), rt1, rt2)]$ Itt $rt1,rt2 :: RefType$. Ha az oszlopnév előtt volt \$, $rt1=Absolute$, különben $rt1=Relative$. Ha a sornév előtt volt \$, $rt2=Absolute$, különben $rt2=Relative$.
+	\item Ha a hivatkozás $(\S (\varepsilon|\$)B(\varepsilon|\$)D^+\S )$ alakú, legyen \textit{b} a betű, és \textit{n} a számjegyek által reprezentált egész szám. Ekkor a kapott  \textit{rs} lista egyelemű. $rs\ = [(fromEnum^P\ (fromEnum^C,n), rt1, rt2)]$ Itt $rt1,rt2 :: RefType$. Ha az oszlopazonosító előtt volt \$, $rt1=Absolute$, különben $rt1=Relative$. Ha a sorazonosító előtt volt \$, $rt2=Absolute$, különben $rt2=Relative$.
 	\item Ha a hivatkozás $(\S  (\varepsilon|\$)B(\varepsilon|\$)D^+:(\varepsilon|\$)B(\varepsilon|\$)D^+\S )$ alakú, felbontható a \textit{:} mentén két egyszerű hivatkozásra. Legyenek a betűk $d_1$ és $d_2$, a számjegyek által reprezentált számok pedig rendre $n_1$ és $n_2$! Ekkor haskelles listakifejezésként a következő módon definiálhatjuk a kapott azonosítólistát: $rs =$ \mbox{$[(fromEnum^P (r,c), rt1, rt2) | r \leftarrow [fromEnum^C(d_1)..fromEnum^C(d_2)], c \leftarrow [n_1..n_2]]$} $rt1$ és $rt2$ az előző esethez hasonlóan kerül meghatározásra, de a $:$ előtti referenciában található $\$$ alapján dől el, hogy az oszlop és a sor abszolút vagy relatív.
 	
 \end{compactenum}
@@ -306,9 +310,9 @@ Ebben a modulban szerepelnek az \textit{App} komponens számára elérhető, a \
 		\hline
 		getCellCode & egy adott cellába legutóbb beírt kód lekérdezése \\
 		\hline
-		setCellState & a megadott cella állapotának módosítása egy a felhasználó által megadott String alapján \\
+		setCellState & a megadott cella állapotának módosítása egy a felhasználó által megadott \textit{String} alapján \\
 		\hline
-		cacheCell & kiértékelés eredményének cachelése \\
+		cacheCell & kiértékelés eredményének cache-elése \\
 		\hline
 		getSelected & kijelölt cella azonosítója \\
 		\hline
@@ -328,7 +332,7 @@ A \textit{setCellState} függvény feladata, hogy a megadott cellaazonosítóhoz
 Ehhez szükség van a megadott \textit{String} \textit{Cell} reprezentációjára, amit a \textit{Spreadsheet.Parser} modul által exportált \textit{rep} függvény számít ki. A kapott reprezentáció alapján az alább leírtaknak megfelelően viselkedik a függvény:
 
 \begin{compactenum}
-	\item Ellenőrzi, hogy a cella állapotának megváltoztatásával keletkeznék-e 		körkörös referencia. Pontosan akkor keletkeznék, ha a megváltoztatandó $c$ 	azonosítójú cellához tartozó csúcsba bemenő összes él kitörlésével keletkezett gráfban van olyan $n$ azonosítójú csúcs, hogy $c$ kódja hivatkozik $n$-re és a gráfban már van $c \rightarrow n$ út. (Ez utóbbi feltétel azt jelenti, hogy az $n$ cella értéke függ $c$ értékétől.) Ezt a feltételt az \textit{isLegal} segédfüggvény ellenőrzi. Érdemes megjegyezni, hogy ilyen hiba csak akkor fordulhat elő, ha a kapott reprezentációnk egy formula.
+	\item Ellenőrzi, hogy a cella állapotának megváltoztatásával keletkeznék-e 		körkörös referencia. Pontosan akkor keletkeznék, ha a megváltoztatandó $c$ azonosítójú cellához tartozó csúcsba bemenő összes él kitörlésével keletkezett gráfban van olyan $n$ azonosítójú csúcs, hogy a $c$-hez megadott kód hivatkozik $n$-re és a gráfban már van $c \rightarrow n$ út. (Ez utóbbi feltétel azt jelenti, hogy az $n$ cella értéke függ $c$ értékétől.) Ezt a feltételt az \textit{isLegal} segédfüggvény ellenőrzi. Érdemes megjegyezni, hogy ilyen hiba csak akkor fordulhat elő, ha a kapott reprezentációnk egy formula.
 	\item Amennyiben az \textit{isLegal} eredménye \textit{False}, a $c$ csúcsban levő cella reprezentációja \textit{For (Formula str' (Left FCycleRefError) Nothing)} lesz, ahol \textit{str'} a paraméterként kapott \textit{String}. A \textit{\_logMessage} mezőbe egy hibaüzenet kerül.
 	\item Amennyiben az \textit{isLegal} segédfüggvény \textit{True} eredményt ad, a gráfból kitöröltetik az összes $c$-be menő él, és új $c$-be menő élek kerülnek behúzásra a $c$ kódja által referált celláknak megfelelő csúcsokból. (Ezeket a \textit{references} segédfüggvény számolja a reprezentációból.) A \textit{\_logMessage} mező tartalma egy sikert jelző üzenet lesz.
 	\item Amennyiben a módosított cella üressé vált, az összes olyan üres cellához tartozó csúcs kitöröltetik a gráfból, melyekből csak a módosított cellába ment él.
@@ -367,11 +371,11 @@ A kiértékelési folyamat az alábbi szempontok alapján került megtervezésre
 
 Az első szempont megvalósításához a kiértékelés során egy kiszámított vagy paraméterként kapott \textit{a} típusú értéket egy \textit{Maybe a} típusú érték reprezentálja. Az üres cellákat \textit{Nothing} reprezentálja, az értékkel rendelkező cellákat pedig egy \textit{Just} érték. Egy a kiértékelés során kiszámított cellaérték is mindig egy \textit{Just}-ba csomagoltatik. Ennek megfelelően \textit{a} típusú cellaértékek listájának futásidejű reprezentációja egy \textit{[Maybe a]}. A Haskellben megszokott listafüggvények a felhasználói dokumentációban részletesen leírt függvények segítségével használhatók ezen a reprezentáción.
 
-A második szempont megvalósításához a kódgenerálás során értékadások sorozata jön létre, és a kiértékelés során ezen értékadások egyesével hajtódnak végre. Így ha valamelyik cella kiértékelésének eredménye egy hiba, csak a tőle függő cellák értéke lesz hiba. 
+A második szempont megvalósításához a kódgenerálás során értékadások sorozata jön létre, és a kiértékelés során ezen értékadások egyesével hajtódnak végre. Így ha valamelyik cella kiértékelésének eredménye egy hiba, csak a tőle függő cellák értéke lesz hiba. Megjegyzés: értékadások alatt GHCi bindingok létrehozása értendő (\textit{<változónév> = <kifejezés>} alakú kifejezések). Ezek valójában \textit{let} bindingok a GHCi által használt \textit{IO}-ban.
 
-Sikertelen kódgenerálás esetén a \textit{generateCode} függvény eredménye egy \textit{Left} konstruktorba csomagolt pár (\textit{(GenError, [CellID])}). Az első komponens jelzi a hiba típusát (\textit{GenEmptyCell}, ha a gráfban nem található üres cellához szerettünk volna kódot generálni; \textit{GenMissingDep}, ha hiányzó függőségek voltak). A második komponens a megváltoztatott cellától függő cellák listája. Erre a kiértékelést végző akciónak van szüksége, hogy cache-elhesse a leszármazott cellákban a hibát.
+Sikertelen kódgenerálás esetén a \textit{generateCode} függvény eredménye egy \textit{Left} konstruktorba csomagolt pár (\textit{(GenError, [CellID])}). Az első komponens jelzi a hiba típusát (\textit{GenEmptyCell}, ha a gráfban nem található üres cellához szerettünk volna kódot generálni; \textit{GenMissingDep}, ha hiányzó függőségek voltak). A második komponens a megváltoztatott cellától függő cellák listája. Erre a kiértékelést végző akciónak van szüksége, hogy cache-elhesse ezen cellákban a hibát.
 
-Ha sikeres a generálás, a \textit{generateCode} függvény eredménye két (egy \textit{Right} konstruktorba csomagolt) lista (\textit{[String],[(String,CellID)]}. Az első listába kerülnek az értékadások, amelyek az úgynevezett külső függőségekhez lettek generálva. A második lista tartalmazza az olyan értékadásokat, amelyek a megváltoztatott id-jű cellától függnek. A \textit{Spreadsheet.Types} modulnál tárgyalt gráfreprezentáció segítségével az előbbi két fogalmat az alábbi módon tehetjük precízzé: 
+Ha sikeres a generálás, a \textit{generateCode} függvény eredménye két (egy \textit{Right} konstruktorba csomagolt) lista: \textit{([String],[(String,CellID)])}. Az első listába kerülnek azok az értékadások, amelyek az úgynevezett külső függőségekhez lettek generálva. A második lista tartalmazza az olyan értékadásokat, amelyek a megváltoztatott id-jű cellától függnek. A \textit{Spreadsheet.Types} modulnál tárgyalt gráfreprezentáció segítségével az előbbi két fogalmat az alábbi módon tehetjük precízzé: 
 
 Legyen \textit{id} a megváltoztatott cella azonosítója, és legyen $lab : CellID \rightarrow Cell$ a gráf csúcsaihoz a megfelelő cellát hozzárendelő függvény! Legyenek $For,Lab : Cell \rightarrow \mathbb{L}$ predikátumok, amelyek akkor adnak igazat, ha a paraméterük a megfelelő konstruktorral jött létre. Legyen \textit{b} egy létező cellaazonosító! Ekkor:
 \begin{align*}
@@ -381,26 +385,29 @@ Legyen \textit{id} a megváltoztatott cella azonosítója, és legyen $lab : Cel
 	&\vee ((b = id) \wedge For(lab(b)))
 \end{align*}
 
-Az \textit{id}-től függő olyan módon kell sorrendbe rendezni, hogy az eredménylistában egy cella csak az őt a listában megelőző celláktól függjön. Ekkor az értékadásokat lehetséges a lista által megadott sorrendben kiértékelni. A sorba rendezéshez a leghosszabb utak algoritmusa szerinti szintek használatosak, ezek alapján kerülnek növekvő sorrendbe az \textit{id}-től függő cellák. Könnyű látni, hogy ez a sorrend megfelel a fent megfogalmazott elvárásnak.  
+Az \textit{id}-től függő cellákat olyan módon kell sorrendbe rendezni, hogy az eredménylistában egy cella csak az őt a listában megelőző celláktól függjön. Ekkor az értékadásokat lehetséges a lista által megadott sorrendben kiértékelni. A sorbarendezéshez a leghosszabb utak algoritmusa szerinti szintek használatosak, ezek alapján kerülnek növekvő sorrendbe az \textit{id}-től függő cellák. Könnyű látni, hogy ez a sorrend megfelel a fent megfogalmazott elvárásnak.
 
-A kódgeneráláshoz szükséges ellenőrizni, hogy a kapott külső függőségek értéke kiolvasható-e. Ez akkor lehetséges, ha a külső függőség egy \textit{Val} (de nem \textit{Val EmptyCell}), vagy egy olyan \textit{For}, amelybe van cachelve érték.
+A kódgeneráláshoz szükséges ellenőrizni, hogy a kapott külső függőségek értéke kiolvasható-e. Ez akkor lehetséges, ha a külső függőség egy \textit{Val} (akár \textit{Val EmptyCell}!), vagy egy olyan \textit{For}, amelybe van cache-elve érték.
 
 Az \textit{id}-től függő cellák esetén (ezek szükségszerűen formulák) azt kell ellenőrizni, hogy sikerült-e őket parseolni. Ez ekvivalens azzal, hogy a \textit{\_value} mező értéke \textit{Just}.
 
 A függőségek listáinak kiszámítása és a fenti ellenőrzések elvégzése a \textit{depList} függvény feladata. A leghosszabb utak szerinti szinteket kiszámító függvény a \textit{GraphFunctions} modulban szerepel. 
 
-Az értékadások generálásáért a \textit{codeG} függvény felel. Ez az \textit{n} azonosító cellához egy \textit{vn = someCode} formájú értékadást generál. A \textit{someCode} részt külső függőség esetén a \textit{cacheG}, \textit{id}-től függő cella esetén a \textit{cellG} függvény számítja ki.
+Az értékadások generálásáért a \textit{codeG} függvény felel. Ez az \textit{n} azonosítójú cellához egy \textit{vn = someCode} formájú értékadást generál. A \textit{someCode} részt külső függőség esetén a \textit{cacheG}, \textit{id}-től függő cella esetén a \textit{cellG} függvény számítja ki.
 
-A \textit{cacheG} függvény üres cellákhoz a \textit{"Nothing"} stringet rendeli. Számokhoz és stringekhez pedig egy \textit{"Just val"} stringet, ahol \textit{val} a megfelelő szám/string. Amennyiben egész számról van szó, a függvény levágja a tizedesrészt a számliterálról, hogy a GHCi egész típusúként értelmezhesse a literált.
+A \textit{cacheG} függvény üres cellákhoz a \textit{"Nothing"} stringet rendeli. Számokhoz és stringekhez pedig egy \textit{"Just val"} stringet, ahol \textit{val} a megfelelő szám/string. Amennyiben egész számról van szó, a függvény levágja a tizedesrészt a számliterálról, hogy a GHCi egész típusúként is értelmezhesse a literált.
 
-A \textit{cellG} függvény a formula \textit{\_value} komponensének elemeiből egy stringet állít elő. Ehhez a \textit{\_value} mező minden eleméhez egy stringet rendel, és ezeket konkatenálja, majd a legvégén eléír egy \textit{"Just \$ "}-t. A függvény az egyes elemekhez az alábbi módon rendel stringeket:
+A \textit{cellG} függvény a formula \textit{\_value} komponensének elemeiből egy stringet állít elő. Ehhez a \textit{\_value} mező minden eleméhez egy stringet rendel, és ezeket konkatenálja, majd a legvégén az így kapott string elé ír egy \textit{"Just \$ "}-t. A függvény az egyes elemekhez az alábbi módon rendel stringeket:
+
+\newpage
+
 \begin{compactenum}
-	\item \textit{Code code} $\rightarrow$ code
-	\item \textit{Refs [n]} $\rightarrow$ "fromJust v\textit{n}"
-	\item \textit{Refs ids}, ha $|ids| > 1 \ \rightarrow$ az ids-ben szereplő cellaazonosítókból generált változónevek listája. Pl. ids=\textit{[1,2,3]} esetén \textit{"[v1,v2,v3]"}
+	\item \textit{Code code} $\rightarrow$ \textit{code}
+	\item \textit{Refs [n]} $\rightarrow$ \textit{"fromJust vn}"
+	\item \textit{Refs ids}, ha $|ids| > 1 \ \rightarrow$ az \textit{ids}-ben szereplő cellaazonosítókból generált változónevek listája. Pl. \textit{ids=[1,2,3]} esetén \textit{"[v1,v2,v3]"}
 \end{compactenum}
 
-A fenti leírásból jól látszik, hogy egy cella értéke mindig \textit{Just}-ba lesz csomagolva. Ha egy cella értékét akarjuk használni, az a "szokásos módon" megtehető, mivel a változónév elé egy \textit{fromJust} kerül. Cellák listája esetén azonban \textit{Just} értékek listáját kapjuk. Érdemes megjegyezni, hogy a cellákhoz kiszámított érték mindig \textit{Maybe a} típusú lesz, így az eredmény kinyeréséhez a \textit{fromJust vn} kód szükséges. Ha az eredmény \textit{Nothing}, ez futásidejű hibát okoz, amit a hívó ki tud olvasni a GHCi-ból, és cachelhet egy hibát a kiértékelt cellához (\textit{EGhciError}). Ez a viselkedés az \textit{App.Setup.Global.evalAndSet} függvényben van definiálva.
+A fenti leírásból jól látszik, hogy egy cella értéke mindig \textit{Just}-ba lesz csomagolva. Ha egy cella értékét akarjuk használni, az a "szokásos módon" megtehető, mivel a változónév elé egy \textit{fromJust} kerül. Cellák listája esetén azonban \textit{Just} értékek listáját kapjuk. Érdemes megjegyezni, hogy a cellákhoz kiszámított érték mindig \textit{Maybe a} típusú lesz, így az eredmény kinyeréséhez a \textit{fromJust vn} kód szükséges. Ha az eredmény \textit{Nothing}, ez futásidejű hibát okoz, amit a hívó ki tud olvasni a GHCi-ból, és cachelhet egy hibát a kiértékelt cellához (\textit{EGhciError}). Ez a viselkedés az \textit{App.Setup.Global.evalAndSet} akcióban van definiálva.
 
 A modul által exportált \textit{generateCode} függvény segítségével végezhető el a fent leírt kódgenerálás. 
 
@@ -411,7 +418,7 @@ A modul által exportált \textit{evalMain} függvény a kifejezések GHCi-ben v
 \begin{compactenum}
 	\item Várakozik, ameddig a globális állapot \textit{evalControl} mezőjének \textit{eCommand} változójába egy GHCi utasítást nem ír a fő szál.
 	\item Kiüríti a változót, és kiértékeli a kapott utasítást a GHCi-ben.
-	\item Ha egy megadott idő után nem ér véget a kiértékelés (jelenleg 1 másodperc), lekérdezi a GHCi folyamathoz tartozó PID-et, majd megkeresi annak a gyerekfolyamatát (\textit{childPid}), és az \textit{eResult} változóba \textit{Left\ childPid}-et ír. Ezt a folyamatot aztán a fő szál fogja kilőni.
+	\item Ha egy megadott idő után nem ér véget a kiértékelés (jelenleg 1 másodperc), lekérdezi a GHCi folyamathoz tartozó PID-et, majd megkeresi annak gyerekfolyamatát (\textit{childPid}), és az \textit{eResult} változóba \textit{Left\ childPid}-et ír. Ezt a folyamatot aztán a fő szál fogja kilőni.
 	\item Amennyiben időben véget ér a kiértékelés, a GHCi által eredményül adott sorok \textit{result} listáját \textit{Right\ result} módon az \textit{eResult} változóba írja.
 \end{compactenum}
 
@@ -429,7 +436,7 @@ Megjegyzés: a fent leírt információk két StackOverflow diskurzusból \cite{
 
 \subsection{Eval.Ghci}
 
-A modul fő feladata, hogy kiértékeljen egy GHCi parancsot, és az eredményt értelmezze. Emellett lehetőséget biztosít a modulok és keresési útvonalak újratöltésére a globális konfiguráció alapján (\textit{EvalConfig}).
+A modul fő feladata, hogy kiértékeljen egy GHCi parancsot, és az eredményt értelmezze. Emellett lehetőséget biztosít a modulok és keresési útvonalak újratöltésére a globális konfiguráció alapján.
 
 A kiértékelés folyamata a (nem exportált) \textit{execG} függvényben van leírva, és az alábbi módon zajlik:
 \begin{compactenum}
@@ -483,11 +490,11 @@ A modul feladata, hogy fájlokat mentsen és betöltsön. Egy adatot akkor lehet
 
 Jelenleg a program egy konfigurációs fájlt használ, ennek nevét a \textit{moduleConfigFile} konstans definiálja. Az alkalmazás bezárásakor ebbe a fájlba kerül mentésre a globális állapot \textit{evalControl} mezőjének \textit{eConfig} mezője.
 
-\subsubsection{saveSheet :: Serialize a => String -> a -> IO ()}
+\subsubsection{saveSheet :: Serialize a => FilePath -> a -> IO ()}
 
 Ez a függvény elment egy szerializálható adatot a megadott fájlnévvel. Létező fájl esetén felülírás történik. 
 
-\subsubsection{loadSheet :: Serialize a => String -> IO (Either String a)}
+\subsubsection{loadSheet :: Serialize a => FilePath -> IO (Either String a)}
 
 Betölti a paraméterként kapott fájlból az adatot. Ha nem létezik a fájl, az eredmény egy hibaüzenet, ami jelzi, hogy a paraméterként kapott fájl nem létezik.
 
@@ -510,10 +517,17 @@ Betölti a modulkonfigurációs fájl tartalmát. Ha a fájl nem létezik, az ak
 	\label{fig:appstructure}
 \end{figure}
 
+A komponensben a legtöbb definiált függvény egy \textit{ReaderT Env IO} akció. Az \textit{App.Types} modul definiál egy típusszinonimát:
+
+\lstset{caption={Az \textit{App} típusszinonima}, label=src:apptype}
+\begin{lstlisting}[language={Haskell}]
+type App a = ReaderT Env IO a
+\end{lstlisting}
+
 \subsection{App.RunApp}
 
-Ez a modul definiálja a főprogramot (\textit{appMain :: IO () )}, amellyel egyenlő a \textit{Main}-ben definiált \textit{main} függvény. Az \textit{appMain} két akcióból áll. Először inicializálja az olvasható globális állapotot (\textit{App.CreateEnv.createEnv}), majd végrehajtja a \mbox{\textit{runApp :: ReaderT Env IO ()}} akciót, az olvasható globális állapotot az előbb inicializált környezetre állítva. A 
-\textit{createEnv} akció elindítja a háttérben futó kiértekelő szálat is. (\textit{Eval.EvalMain.evalMain}).
+Ez a modul definiálja a főprogramot (\textit{appMain :: IO () )}, amellyel egyenlő a \textit{Main}-ben definiált \textit{main} függvény. Az \textit{appMain} két akcióból áll. Először inicializálja az olvasható globális állapotot (\textit{App.CreateEnv.createEnv}), majd végrehajtja a \mbox{\textit{runApp :: App ()}} akciót, az olvasható globális állapotot az előbb inicializált környezetre állítva. A 
+\textit{createEnv} akció elindítja a háttérben futó kiértékelő szálat is. (\textit{Eval.EvalMain.evalMain}).
 
 A \textit{runApp} akció a következőképpen határozza meg a program működését:
 \begin{compactenum}
@@ -528,9 +542,9 @@ Ez a modul exportálja az \textit{App.RunApp}-ban használt \mbox{\textit{create
 
 A \textit{createEvalControl :: IO EvalControl} segédakció hozza létre az \textit{evalControl} mező tartalmát. Az \textit{eGhci} mezőhöz elindít egy GHCi-t. A GHCi alapértelmezett munkakönyvtára az alkalmazás futtatásának helye. Az \textit{eCommand} és \textit{eResult} mezőkhöz létrehoz egy-egy üres \textit{MVar}-t. Az \textit{eConfig} mező tartalmát beolvassa a konfigurációs fájlból (\textit{Persistence.loadModuleConfig}).
 
-A state mező az üres számolótáblával kerül inicializálásra (\textit{Spreadsheet.Interface.emptySpreadSheet}). A file mező \textit{Nothing}-gal kerül inicializálásra, mivel kezdetben nincs betöltve fájl az alkalmazásba
+A state mező tartalma az üres számolótáblával kerül inicializálásra (\textit{Spreadsheet.Interface.emptySpreadSheet}). A file mező tartalma \textit{Nothing}-gal kerül inicializálásra, mivel kezdetben nincs betöltve fájl az alkalmazásba
 
-A \textit{createGui :: IO Gui} segédakció építi fel a felhasználói felületet. Az alkalmazás grafikus felületét egy \textit{Window} tartalmazza (\textit{mainWindow}). Ennek az ablaknak a gyereke egy \textit{VBox}, amely a további widgeteket tartalmazza.   Ezek rendre a menüsor (egy \textit{HBox}, ami \textit{Button}-öket tartalmaz),  az egysoros kódszerkesztő (\textit{Entry}), valamint egy \textit{VPaned}, aminek felső komponense a cellákat tartalmazó táblázat (\textit{Table}), alsó komponense pedig a logot megjelenítő \textit{ScrolledWindow}. Ezek alá kerül a parancssor (\textit{Entry}).
+A \textit{createGui :: IO Gui} segédakció építi fel a felhasználói felületet. Az alkalmazás grafikus felületét egy \textit{Window} tartalmazza (\textit{mainWindow}). Ennek az ablaknak a gyereke egy \textit{VBox}, amely a további widgeteket tartalmazza.   Ezek rendre a menüsor (egy \textit{HBox}, ami \textit{Button}-öket tartalmaz),  az egysoros kódszerkesztő (\textit{Entry}), valamint egy \textit{VPaned}, melynek felső komponense a cellákat tartalmazó táblázat (\textit{Table}), alsó komponense pedig a logot megjelenítő \textit{ScrolledWindow}. Ezek alá kerül a parancssor (\textit{Entry}).
 
 A \textit{Table} létrehozásakor jönnek létre a cellák megjelenítésére szolgáló \textit{Entry}-k, melyek a pozíciójukat leíró kulccsal együtt kerülnek mentésre.
 
@@ -542,58 +556,58 @@ Az akció "*new file"-ra állítja a fő ablak címét, mivel az alkalmazás eli
 
 Ez a modul exportálja a \textit{setupGui} akciót, amelynek feladata, hogy a GUI-hoz eseménykezelőket rendeljen. Ezek az eseménykezelők definiálják az alkalmazás lényegi működését. A \textit{setupGui} akció rendre végrehajtja a \textit{setupEditor}, \textit{setupCommandLine}, \textit{setupMenubar}, \textit{setupTable} és \textit{setupMainWindow} akciókat, amelyek definiálják az egyes GUI komponensek működését. Ezek az akciók a megfelelő nevű \textit{App.Setup.*} almodulban vannak definiálva.
 
-Az eseménykezelők megadásához egy \textit{IO ()} akcióra vagy egy \mbox{\textit{Event-> IO ()}} függvényre van szükség. Ez azért hátrányos, mert nem lehetséges az eseménykezelőket közvetlenül a ReaderT kontextusban definiálni. Ezért az eseménykezelők megadására az alábbi minta használatos:
+Az eseménykezelők megadásához egy \textit{IO ()} akcióra vagy egy \mbox{\textit{Event-> IO ()}} függvényre van szükség. Ez azért hátrányos, mert nem lehetséges az eseménykezelőket közvetlenül a \textit{ReaderT} kontextusban definiálni. Ezért az eseménykezelők megadására az alábbi minta használatos:
 
 \lstset{caption={Az eseménykezelők hozzárendelése}, label=src:ehandler}
 \begin{lstlisting}[language={Haskell}]
-setupSomeWidget :: ReaderT Env IO ()
+setupSomeWidget :: App ()
 setupSomeWidget = do
 	widget <- ...
 	env <- ask
 	...
 	void $ lift $ onSomeEvent widget $ runReaderT handlerAction env
 	
-handlerAction :: ReaderT Env IO ()
+handlerAction :: App ()
 \end{lstlisting}
 
-Tehát a eseménykezelőt hozzárendelő függvény lekérdezi a globális állapotot, és az eseménykezelő egy ReaderT IO akció futtatása a globális állapottal. Így viszonylag kényelmesen használható a globális állapot az eseménykezelők megírásakor. A fent leírt minta akkor is alkalmazható, ha van egy extra \textit{Event} paraméter (pl. \textit{onFocusOut}).  Ilyenkor a \textit{handlerAction}-nek paraméterként adható az \textit{Event}.
+Tehát a eseménykezelőt hozzárendelő függvény lekérdezi a globális állapotot, és az eseménykezelő egy ReaderT IO akció futtatása a globális állapottal. Így viszonylag kényelmesen használható a globális állapot az eseménykezelők megírásakor. A fent leírt minta akkor is alkalmazható, ha van egy extra \textit{Event} paraméter (pl. \textit{onFocusOut} esemény). Ilyenkor a \textit{handlerAction}-nek paraméterként adható az \textit{Event}.
 
 \subsection{App.Setup.Global}
 
 Ez a modul olyan akciókat definiál, melyeket az \textit{App.Setup} további almoduljai felhasználhatnak. Az alább leírtak mellett a modul exportál néhány, a globális állapot egyes komponenseinek lekérdezését kényelmesebbé tevő akciót is.
 
-\subsubsection{setTitle :: ReaderT Env IO ()}
+\subsubsection{setTitle :: App ()}
 
 Ez az akció állítja be az ablak címét a globális állapot \textit{file} mezője alapján:
 \begin{compactenum}
 	\item Ha a \textit{file} változó tartalma \textit{Nothing}, az ablak címe "*new file".
-	\item Ha a \textit{file} változó tartalma \textit{Just fname} és a fájl állapota \textit{Modified}, akkor az ablak címe "*<fname>".
-	\item Ha a \textit{file} változó tartalma \textit{Just fname} és a fájl állapota \textit{Saved}, akkor az ablak címe "<fname>".
+	\item Ha a \textit{file} változó tartalma \textit{Just fname} és a fájl állapota \textit{Modified}, akkor az ablak címe \textit{"*<fname>"}.
+	\item Ha a \textit{file} változó tartalma \textit{Just fname} és a fájl állapota \textit{Saved}, akkor az ablak címe \textit{"<fname>"}.
 \end{compactenum}
 
-\subsubsection{logAppendText :: String -> ReaderT Env IO ()}
+\subsubsection{logAppendText :: String -> App ()}
 
 A paraméterként kapott \textit{String}-et új sorként hozzáadja a log aljához, majd legörget a logot tartalmazó \textit{ScrolledWindow}-ban. A legörgetés többsoros üzenet esetén csak az első sorig görget le. Ez egy ismert hiba, amit egyelőre nem sikerült javítani. Jelenleg nincs számontartva a log mérete, és nincs is maximális mérete. Ennek értelmében a logüzeneteket tartalmazó buffer mérete tetszőlegesen nagy lehet.
 
-\subsubsection{updateView :: ReaderT Env IO ()}
+\subsubsection{updateView :: App ()}
 
 A globális állapot \textit{state} mezője alapján frissíti a cellákban megjelenő szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt. A táblanézet frissítése után az ablak címét is frissíti a \textit{setTitle} akció segítségével.
 
-\subsubsection{evalAndSet :: CellID -> ReaderT Env IO}
+\subsubsection{evalAndSet :: CellID -> App ()}
 
 Kiértékeli a megadott azonosítójú cellához generált kódrészleteket, majd a kiértékelés eredményét cacheli a számolótáblába. A betöltött fájl állapotát \textit{Modified}-ra módosítja.
 
 A kiértékeléshez először kódot generál a kapott azonosítóhoz \mbox{(\textit{Spreadsheet.CodeGeneration.generateCode})}. Kódgenerálási hiba esetén cacheli a hibát jelző üzenetet a leszármazott cellákba.
 
-Ha sikeres volt a kódgenerálás, akkor a kapott sorrendben kiértékeli az utasításokat a GHCi-ben. Ehhez először törli a korábbi GHCi bindingokat az \textit{Eval.Ghci.loadModules} akcióval. Erre azért van szükség, hogy ha egy cellához rendelt változót nem sikerült kiszámítani (pl. típushiba miatt), akkor a leszármazott cellához ne legyen felhasználható egy korábbi kiértékeléskor kiszámított, elavult érték. Ezután kiértékeli a külső dependenciákat, azaz azon cellákat, amelyek nem függnek a megváltoztatott cellától, de függőségei valamely  a megváltoztatott cellától függő cellának. (Ez a kódgenerálás által adott első lista.)
+Ha sikeres volt a kódgenerálás, akkor a kapott sorrendben kiértékeli az utasításokat a GHCi-ben. Ehhez először törli a korábbi GHCi bindingokat az \textit{Eval.Ghci.loadModules} akcióval. Erre azért van szükség, hogy ha egy cellához rendelt változót nem sikerült kiszámítani (pl. típushiba miatt), akkor a leszármazott cellához ne legyen felhasználható egy korábbi kiértékeléskor kiszámított, elavult érték. Ezután kiértékeli a külső függőségeket, azaz azon cellákat, amelyek nem függnek a megváltoztatott cellától, de függőségei valamely  a megváltoztatott cellától függő cellának. (Ez a kódgenerálás által adott első lista.)
 
-Ezután következik a második lista utasításainak kiértékelése. Minden utasítás esetén először végrehajtja az értékadást. Ha az eredmény hiba, a kiértékelés eredménye hiba. Ha az eredmény nem hiba, akkor lekérdezi a kiértékelt változót. A kódgenerálás garanciát ad arra, hogy egy cella mindig a függőségei után kerül kiértékelésre.
+Ezután következik a második lista utasításainak kiértékelése. Minden utasítás esetén először végrehajtatik az értékadás. Ha az eredmény hiba, a kiértékelés eredménye hiba. Ha az eredmény nem hiba, akkor lekérdezésre kerül a kiértékelt változó  egy \textit{fromJust v<n>} GHCi lekérdezéssel. A kódgenerálás garanciát ad arra, hogy egy cella mindig a függőségei után kerül kiértékelésre.
 
 Az összegyűjtött eredmények ezután cacheltetnek \mbox{(\textit{Spreadsheet.Interface.cacheCell})}. A betöltött fájl állapota \textit{Modified} lesz.
 
-A GHCi által adott hibákat típushibákat kiírja a log ablakba. A futási idejű hibákat jelenleg nem logolja, ez egy ismert hiba.
+A GHCi által adott hibákat típushibákat kiírja a log ablakba. A futásidejű hibákat jelenleg nem logolja, ez egy ismert hiba.
 
-\subsubsection{updateView :: ReaderT Env IO}
+\subsubsection{updateView :: App ()}
 
 A számolótábla állapota alapján frissíti a cellákban megjelenített szöveget. Ehhez felhasználja a \textit{Spreadsheet.Interface.getCellText} függvényt. A cellatartalmak lekérdezése a GUI \textit{entryKeys} komponensében tárolt kulcsok alapján történik.
 
@@ -607,7 +621,7 @@ A modul a parancssor (\textit{Entry}) \textit{onEntryActivate} eseményéhez (en
 \begin{compactenum}
 	\item A parancssorban lévő szöveg parancsként parseoltatik.
 	\item Ha GHCi parancsként értelmezhető (a parseolás eredménye \textit{ClGhci cmd}), akkor végrehajtatik a GHCi parancs, és az eredmény logolásra kerül.
-	\item Ha \textit{cp} vagy \textit{mv} parancsként értelmezhető (\textit{ClCp ls} vagy \textit{ClMv ls}), akkor a kapott cellaazonosító-párok alapján végrehajtódik a másolás/mozgatás. Az akció a kapott lista szerinti sorrendben hajtódik végre. Először lekérdeztetik a forráscella kódja, majd a relatív hivatkozások eltolásra kerülnek az \textit{Eval.CommandLine.shiftCode} függvénnyel, végül a célcella állapota ez az "eltolt kód" lesz. Az összes akció végrehajtása után frissül a nézet.
+	\item Ha \textit{cp} vagy \textit{mv} parancsként értelmezhető (\textit{ClCp (d,ls)} vagy \textit{ClMv (d,ls)}), akkor a kapott cellaazonosító-párok alapján végrehajtódik a másolás/mozgatás. Először lekérdeztetik az összes forráscella kódja, majd a relatív hivatkozások eltolásra kerülnek az \textit{Eval.CommandLine.shiftCode} függvénnyel, végül a célcellák állapotai az eltolt kódok alapján frissülnek. Az összes akció végrehajtása után frissül a nézet.
 	\item Ismeretlen parancs esetén logolásra kerül a hiba.
 	\item A parancsorból eltűnik a szöveg.
 \end{compactenum}
@@ -619,8 +633,8 @@ A modul a kódszerkesztő (\textit{Entry}) \textit{onFocusOut} (fókusz elveszt�
 A fókusz elvesztésekor és az enter leütésekor az alábbi viselkedés következik be:
 \begin{compactenum}
 	\item Amennyiben nem volt kiválasztva cella a táblában, nem történik semmi.
-	\item Amennyiben volt kiválasztott cella, a cella állapota módosításra kerül a bevitt szöveg alapján (\mbox{\textit{Spreadsheet.Interface.setCellState)}}. Ha ezzel megváltozott a cella állapota, végrehajtódik egy kiértékelés, aminek a gyökere a megváltoztatott cella. (\mbox{\textit{App.Setup.Global.evalAndSet}}).
-	\item Frissül a táblanézet ((\mbox{\textit{App.Setup.Global.updateView)}}
+	\item Amennyiben volt kiválasztott cella, az állapota módosításra kerül a bevitt szöveg alapján (\mbox{\textit{Spreadsheet.Interface.setCellState)}}. Ha ezzel megváltozott a cella állapota, végrehajtódik egy kiértékelés, aminek a gyökere a megváltoztatott cella. (\mbox{\textit{App.Setup.Global.evalAndSet}}).
+	\item Frissül a táblanézet (\mbox{\textit{App.Setup.Global.updateView)}}.
 \end{compactenum}
 
 A fókusz megszerzésekor amennyiben volt kijelölt cella, úgy annak a legutóbb megadott kódja jelenik meg a szerkesztőben.
@@ -660,9 +674,9 @@ Az oszlopok tetején levő gombokra kattintva lehet állítani a megfelelő oszl
 
 A tesztelés első fázisában az egyes komponensek kerültek tesztelésre. Az egyes komponensekhez tartozó tesztelési tervekben szerepelnek a tesztelt függvények, és a függvényenkénti tesztelési szempontok. A tesztesetek kézzel készültek a megadott szempontok alapján. 
 
-Az egyes modulokhoz tartozó tesztesetek a \textit{Test.<modulnév>} modulokban találhatók. Mindegyik tesztmodul exportál egy \textit{run<modulnév>Tests :: IO ()} akciót, amely a standard outputra logolja a tesztelés eredményét. \textbf{IDE MÉG ÍROK, HA TÉNYLEGESEN KÉSZ LESZNEK A TESZTEK.}
+Az egyes modulokhoz tartozó tesztesetek a \textit{Test.<modulnév>} modulokban találhatók. Mindegyik tesztmodul exportál egy \textit{run<modulnév>Tests :: IO ()} akciót, amely a standard outputra logolja a tesztelés eredményét.
 
-A tesztelés második fázisában került tesztelésre a szoftver tényleges működése. A felhasználói tesztelés kézzel történt a megfelelő szakaszban \textbf{IDE KELL SZÁM} felsorolásszerűen leírt szempontok alapján. \textbf{Vastag betűvel jelzem a nem teljesített teszteseteket.}
+A tesztelés második fázisában került tesztelésre a szoftver tényleges működése. A felhasználói tesztelés kézzel történt a 3.8.4 alfejezetben felsorolásszerűen leírt szempontok alapján.
 
 \subsection{Test.Spreadsheet.*}
 
@@ -675,6 +689,7 @@ A \textit{Spreadsheet.Parser} modulból az általa egyedüliként exportált \te
 	\item Számliterálok -- egész, tizedestört (. előtti és utáni rész nélkül is), pozitív és negatív számok
 	\item Formulák -- referencia nélkül, egyszerű és többszörös referenciák, csak referenciát tartalmazó formulák, formula elején/végén levő referencia, referencia kisbetűvel és nagybetűvel is.
 	\item Szintaxishibák -- "=", bezáratlan §, §-on belüli hibás szintaxis.
+	\item Abszolút és relatív hivatkozások.
 	\item Stringliterálok
 \end{compactenum}
 
@@ -689,7 +704,7 @@ Alább felsorolásszerűen szerepelnek a \textit{setCellState} függvényhez tar
 \begin{compactenum}
 	\item Értékek, hivatkozást nem tartalmazó formulák hozzáadása, módosítás (\textit{setSimple} teszteset)
 	\item Formulák hozzáadása, körmentesen (\textit{refsNoCycle} teszteset)
-	\item 1, 2 és több hosszú körök előidé	zésének megkísérlése. (\text{tryCycle*} tesztesetek)
+	\item 1, 2 és több hosszú körök előidézésének megkísérlése. (\text{tryCycle*} tesztesetek)
 	\item Nem hivatkozott cella üressé tétele, ekkor a megfelelő csúcsnak el kell tűnnie a gráfból. (\textit{makeEmptyNoRef} teszteset)
 	\item Az üressé tett, nem hivatkozott cella egyedüliként hivatkozik legalább egy üres cellára. Ekkor a hivatkozott üres cella is eltűnik a gráfból. (\textit{makeEmptyNoRef} teszteset)
 	\item Hivatkozott cella üressé tétele.
@@ -700,11 +715,11 @@ Alább felsorolásszerűen szerepelnek a \textit{setCellState} függvényhez tar
 
 Az \textit{Eval} komponensből csak az \textit{Eval.CodeGeneration} modulhoz készültek egységtesztek. 
 
-A parancssori parancsok parseolására szolgáló \textit{Eval.CommandLine} tesztelésére nincs szükség, mivel a referenciák feloldása már a \textit{Spreadsheet.Parser} modulban teszteltetett, az implementáció maradéka pedig egyszerű, az esetleges hibák pedig jól megtervezett felhasználói tesztekkel szűrhetől.
+A parancssori parancsok parseolására szolgáló \textit{Eval.CommandLine} tesztelésére nincs szükség, mivel a referenciák feloldása már a \textit{Spreadsheet.Parser} modulban teszteltetett, az implementáció maradéka pedig egyszerű, az esetleges hibák pedig jól megtervezett felhasználói tesztekkel szűrhetők.
 
 Az \textit{Eval.Ghci} és \textit{Eval.EvalMain} modulok funkcionalitása a kiértékeléshez kapcsolódik. Az ezen két modulban definiált akciók helyes működése szintén a felhasználói tesztekkel ellenőrizhető. (Csak a kiértékelés eredményét kell figyelni, és a háttérben futtatott folyamatokat monitorozni.)
 
-A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként exportált \textit{generateCode} függvény teszteltetett. A tesztesetek először felépítenek egy számolótáblát (\textit{setCellState} és \textit{cacheCell} segítségével), majd kódot generálnak a megadott cellákhoz, és az eredményt összehasonlítják az elvárt eredménnyel. A tesztesetek manuálisan lettek előállítva az alábbi szempontok alapján: 
+A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként exportált \textit{generateCode} függvény teszteltetett. A tesztesetek először felépítenek egy számolótáblát (\textit{setCellState} és \textit{cacheCell} segítségével), majd kódot generálnak a megadott cellákhoz, és az eredményt összehasonlítják az elvárt eredménnyel. A tesztesetek manuálisan lettek összeállítva az alábbi szempontok alapján: 
 
 \begin{compactenum}
 	\item Kódgenerálás értékhez, amelytől nem függ cella.
@@ -780,11 +795,11 @@ A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként 
 	\begin{itemize}
 		\item A hibás cellában megjelenik az "FNoParse" szöveg
 		\item A hibás cellára hivatkozó cellákban megjelenik az "FNoCache" szöveg.
-		\item \textbf{Egy korábban helyes cellát parseolási hibásra átírva a hibás cellára hivatkozó cellák állapota megváltozik.} A parseolási hibát megszüntetve a leszármazott cellák hibája is megszűnik. (amennyiben a beírt kód helyes).
+		\item Egy korábban helyes cellát parseolási hibásra átírva a hibás cellára hivatkozó cellák állapota megváltozik. A parseolási hibát megszüntetve a leszármazott cellák hibája is megszűnik. (amennyiben a beírt kód helyes).
 	\end{itemize}
 	\item GHCi típus- és futásidejű hibák előidézése
 	\begin{itemize}
-		\item A hibás cellában és a belőle leszármazó cellákban megjelenik az "FGhciError"/"FNoCache" szöveg. \textbf{A hibaüzenetek még nem túl jók a leszármazott cellában.}
+		\item A hibás cellában és a belőle leszármazó cellákban megjelenik az "FGhciError"/"FNoCache" szöveg.
 		\item Egy korábban helyes cellát GHCi hibásra átírva a hibás cellára hivatkozó cellák állapota megváltozik. A hibát megszüntetve a leszármazott cellák hibája is megszűnik. (amennyiben a beírt kód helyes).
 	\end{itemize}
 	\item GHCi időtúllépési hibák előidézése
@@ -802,8 +817,15 @@ A tesztelés során az \textit{Eval.CodeGeneration} modul által egyedüliként 
 
 \subsection{A tesztelés tanulságai}
 
-A tesztelés segítségével számos apró hibát sikerült feltárni. Ezek többnyire elírásokból, vagy olyan szélsőséges esetekből adódtak, amelyekre nem gondoltam a tervezési fázis során. A 3.7.1-3.7.4 alfejezetekben leírt tesztelési szempontok alapján a program átment a teszteken, biztosítja az elvárt funkcionalitást.
+A tesztelés segítségével számos apró hibát sikerült feltárni. Ezek többnyire elírásokból, vagy olyan szélsőséges esetekből adódtak, amelyekre nem gondoltam a tervezési fázis során. A 3.8.1-3.8.4 alfejezetekben leírt tesztelési szempontok alapján a program átment a teszteken, biztosítja az elvárt funkcionalitást.
 
 Az egységtesztelés során a legtöbb problémát az \textit{Eval.CodeGeneration} modul okozta. A jelenlegi implementáció bár működik a szélsőséges esetekre is, kissé kaotikus. Itt indokolt lehet a modul újratervezése. (Az újratervezés mögött más érvek is szólnak, erről részletesebben a szoftverrel kapcsolatos távlati terveket részletező 4.2 alfejezetben esik szó.)
+
+Van néhány hiba, amit eddig technikai nehézségek miatt nem sikerült javítanom:
+
+\begin{compactenum}
+	\item Ha eltávolítunk egy modult a "Modules" listából, nem töltődik ki a GHCi-ból. Ennek működnie kellene, \textit{ghcid} hiba állhat mögötte.
+	\item Log üzenet megjelenítésekor az ablak csak az üzenet első soráig scrollozik le. Alaposabb GTK ismeretekkel feltehetően megoldható.
+\end{compactenum}
 
 A felhasználói tesztek fő tanulsága, hogy a felület még nem kellően felhasználóbarát. Számos funkció hiányzik, ami kényelmesebbé tenné a felhasználó munkáját (pl. formázással kapcsolatos beállítások, beszédes hibaüzenetek). (Erről is részletesebben esik szó a 4.2 alfejezetben.) Ugyanakkor a megvalósított funkciók intuitívan használhatók, így egy jó alapot biztosítanak a későbbiekben megtervezendő, összetettebb felhasználói felülethez.

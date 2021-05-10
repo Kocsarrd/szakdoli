@@ -41,8 +41,8 @@ A fentiek megléte esetén a program az alábbi paranccsal fordítható:
 	\item Az oszlop tetején levő gombra kattintva lehetséges beállítani az oszlop karakterekben megadott szélességét. Az oszlopok legfeljebb 100 karakter szélesek lehetnek. Megjegyzés: az átméretezés végrehajtása jelenleg meglehetősen lassú, akár 10 másodpercet is igénybe vehet.
 	\item A számolótábla. A számolótábla mérete fixen 26 oszlop és 100 sor. A cellába beírt kód akkor kerül kiértékelésre, ha a felhasználó egy másik elemre kattint vagy leüti az entert.
 	\item A számolótábla alján és jobb oldalán található görgőkkel lehet görgetni a számolótáblában.
-	\item A számolótábla és a log ablak relatív mérete húzással állítható. 
-	\item A log mutatja a végrehajtott akciók (pl. cella kódjának átírása, GHCi query eredménye) eredményét. Jobb oldalt görgethető.
+	\item A számolótábla és a log ablak egymáshoz viszonyított mérete húzással állítható. 
+	\item A log mutatja a végrehajtott akciók eredményét (pl GHCi hibaüzenetek).
 	\item Az alkalmazáshoz tartozó parancssor. A beírt parancs akkor kerül kiértékelésre, ha a felhasználó leüti az entert.
 	\item A log üzenetek között a log ablak jobb oldalán található görgővel lehet görgetni.
 \end{compactenum}
@@ -78,7 +78,7 @@ Megjegyzés: A cellákba csak numerikus és szöveges adat írható és számít
 
 \subsection{A futásidejű reprezentáció}
 
-Egy cella futásidejű reprezentációja egy \textit{Maybe a} típusú érték. Az üres cella reprezentációja \textit{Nothing}, a nemüres cella reprezentációja \textit{Just val}, ahol \textit{val} a cella értéke. A kiszámított értékek is mindig Just-ba csomagoltatnak, hogy a GHCi továbbszámolhasson velük. A valamely cella megváltozásának hatására kezdődő kiértékelési folyamat végrehajtása után az értékek visszaolvasásakor ez a háttérben egy \textit{fromJust} hívással kicsomagolódik, az értékek a cellákban Just nélkül jelennek meg.
+Egy cella futásidejű reprezentációja egy \textit{Maybe a} típusú érték. Az üres cella reprezentációja \textit{Nothing}, a nemüres cella reprezentációja \textit{Just val}, ahol \textit{val} a cella értéke. A kiszámított értékek is mindig Just-ba csomagoltatnak, hogy a GHCi továbbszámolhasson velük. A valamely cella megváltozásának hatására kezdődő kiértékelési folyamat végrehajtása után az értékek visszaolvasásakor ez a háttérben egy \textit{fromJust} hívással kicsomagolódik, az értékek a cellákban \textit{Just} nélkül jelennek meg.
 Egész szám esetén a kódgeneráló algoritmus figyel arra, hogy olyan literált generáljon a cellaértékből, ami értelmezhető egész típusúként (azaz ilyenkor levágja a tizedesrészt).
 
 A cellahivatkozások feloldását példákon keresztül mutatjuk be. Bal oldalt található a hivatkozás, jobb oldalt a generált kód.
@@ -145,7 +145,9 @@ onJusts f = f . map fromJust . filter isJust
 Példa:
 \textit{"=onJusts (concat . map tail) §a0:a5§"} $\rightarrow$ az a0-a5 cellalista nemüres elemeinek konkatenálása, de mindegyikből elhagyva az első karaktert.
 
-De természetesen közvetlenül is kihasználható a listahivatkozások \textit{[Maybe a]} reprezentációja. A következő kódrészlettel például megszámolhatók a nemüres cellák: \textit{"=length \$ filter isJust \$ §a0:a5§"}.
+De természetesen közvetlenül is kihasználható a listahivatkozások \textit{[Maybe a]} reprezentációja. A következő kódrészlettel például megadja az a0-a5 cellalista nemüres celláinak számát: \textit{"=length \$ filter isJust \$ §a0:a5§"}.
+
+Az \textit{Empty} modul exportálja a teljes \textit{Data.Maybe} modult, így az abban található függvények alapértelmezetten használhatók a cellák kódjának megadásakor.
 
 \subsection{Alapértelmezett függvénypéldányok}
 
@@ -155,14 +157,12 @@ Az \textit{Empty} modul biztosítja a \textit{Prelude} függvényeinek egy-egy a
 
 \subsection{A könyvtár bővítése}
 
-A felhasználónak lehetősége van saját modulokat írni az alkalmazáshoz, és azokat használni. (A modulok importálásáról a 2.3 szakaszban esett szó.) Saját polimorf függvények írásakor érdemes explicit kiírni a típusokat, ugyanis a monomorfizmus-megszorítás (\cite{monorestr}) miatt a Haskell fordító gyakran túl specifikus típust következtet ki. A standard könyvtár definiál két típusszinomimát listafüggvényekhez:
+A felhasználónak lehetősége van saját modulokat írni az alkalmazáshoz, és tetszőleges modult betölthet az alkalmazásba. (A modulok importálásáról a 2.3 szakaszban esett szó.) Saját polimorf függvények írásakor érdemes explicit kiírni a típusokat, ugyanis a monomorfizmus-megszorítás (\cite{monorestr}) miatt a Haskell fordító gyakran túl specifikus típust következtet ki. A standard könyvtár definiál két típusszinomimát listafüggvényekhez:
 
 \begin{lstlisting}[caption={LFun és NLFun}, language={Haskell},label=src:lfun]
 type LFun a b = [Maybe a] -> b
 type NLFun a b = Num a => [Maybe a] -> b
 \end{lstlisting}
-
-Emellett természetesen tetszőleges Haskell modul betölthető az alkalmazásba.
 
 \section{A parancssorban használható parancsok}
 
